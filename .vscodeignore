@@ -5,5 +5,13 @@ src/**
 .gitignore
 tsconfig.json
 webpack.config.js
-python/requirements.txt
-*.md
+sample_creation.sas
+test_python.py
+test_scientific_notation.py
+debug_usubjid.py
+create_sample_data.py
+image/feedback*.png
+*.vsix
+.github/**
+.git/**
+node_modules/**
