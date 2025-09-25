@@ -239,24 +239,27 @@ export class SASWebviewPanel {
     }
 
     private getVariableIcon(variable: any): string {
-        // Check for date/time formats first
-        if (variable.format) {
+        // Only check for date/time formats on NUMERIC variables
+        if (variable.type === 'numeric' && variable.format) {
             const format = variable.format.toUpperCase();
+            if (format.includes('DATETIME')) return '🕐';
             if (format.includes('DATE')) return '📅';
             if (format.includes('TIME')) return '🕐';
-            if (format.includes('DATETIME')) return '🕐';
             if (format.includes('DOLLAR') || format.includes('CURRENCY')) return '💰';
             if (format.includes('PERCENT')) return '%';
         }
 
-        // Check variable name patterns for date/time
-        const nameUpper = variable.name.toUpperCase();
-        if (nameUpper.includes('DATE') || nameUpper.includes('DT')) return '📅';
-        if (nameUpper.includes('TIME') || nameUpper.includes('TM')) return '🕐';
+        // For numeric variables without special formats, check name patterns
+        if (variable.type === 'numeric') {
+            const nameUpper = variable.name.toUpperCase();
+            if (nameUpper.includes('DATETIME') || nameUpper.includes('DTTM')) return '🕐';
+            if (nameUpper.includes('DATE') || nameUpper.includes('DT')) return '📅';
+            if (nameUpper.includes('TIME') || nameUpper.includes('TM')) return '🕐';
+            return '#'; // Default numeric icon
+        }
 
-        // Standard type icons
+        // Character variables are always shown as text, regardless of name
         if (variable.type === 'character') return '📝';
-        if (variable.type === 'numeric') return '#';
 
         return '?';
     }
@@ -277,7 +280,7 @@ export class SASWebviewPanel {
             return `
                 <div class="variable-item">
                     <input type="checkbox" checked id="var-${index}" onchange="toggleColumn('${variable.name}', this.checked)">
-                    <label for="var-${index}" title="${this.getVariableTooltipText(variable)}">${icon} ${variable.name}</label>
+                    <span class="variable-text show-both" title="${this.getVariableTooltipText(variable)}">${icon} ${variable.name}${variable.label && variable.label !== variable.name ? ` (${variable.label})` : ''}</span>
                 </div>`;
         }).join('');
 
@@ -309,7 +312,7 @@ export class SASWebviewPanel {
                 .stats { color: var(--vscode-descriptionForeground); font-size: 11px; margin: 2px 0 0 0; }
                 .filter-section { display: flex; flex-direction: column; gap: 8px; }
                 .filter-input { display: flex; gap: 5px; align-items: center; }
-                .where-input { flex: 1; padding: 6px 8px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 12px; }
+                .where-input { flex: 1; padding: 8px 12px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 13px; min-width: 300px; }
                 .btn { padding: 6px 12px; border: 1px solid var(--vscode-button-border); background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-radius: 3px; cursor: pointer; font-size: 11px; }
                 .btn:hover { background: var(--vscode-button-hoverBackground); }
                 .btn-secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
@@ -319,15 +322,35 @@ export class SASWebviewPanel {
                 .control-label { font-size: 11px; color: var(--vscode-descriptionForeground); min-width: 50px; }
                 select { padding: 4px 6px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 11px; }
                 .content { display: flex; gap: 15px; height: calc(100vh - 180px); }
-                .sidebar { width: 280px; display: flex; flex-direction: column; }
+                .sidebar { min-width: 250px; max-width: 450px; width: 320px; display: flex; flex-direction: column; transition: width 0.3s ease; }
+                .sidebar.compact { width: 280px; }
+                .sidebar.expanded { width: 400px; }
                 .data-area { flex: 1; display: flex; flex-direction: column; }
                 .variables-container { flex: 1; overflow-y: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 10px; background: var(--vscode-sideBar-background); }
                 table { border-collapse: collapse; width: 100%; }
                 th, td { border: 1px solid var(--vscode-panel-border); padding: 6px 8px; text-align: left; font-size: 12px; }
                 th { background: var(--vscode-editor-background); font-weight: 600; position: sticky; top: 0; z-index: 10; }
-                .variable-item { padding: 6px 0; border-bottom: 1px solid var(--vscode-panel-border); }
+                .variable-item {
+                    padding: 6px 0;
+                    border-bottom: 1px solid var(--vscode-panel-border);
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
                 .variable-item:last-child { border-bottom: none; }
-                .variable-item input { margin-right: 8px; }
+                .variable-item input { margin: 0; flex-shrink: 0; }
+                .variable-text {
+                    flex: 1;
+                    font-size: 11px;
+                    overflow: hidden;
+                    white-space: nowrap;
+                    text-overflow: ellipsis;
+                    min-width: 0;
+                }
+                .variable-text.show-both {
+                    white-space: normal;
+                    line-height: 1.3;
+                }
                 h3 { margin: 0 0 10px 0; font-size: 13px; font-weight: 600; }
                 .section-title { font-size: 11px; font-weight: 600; color: var(--vscode-descriptionForeground); text-transform: uppercase; margin-bottom: 8px; }
             </style>
@@ -700,8 +723,20 @@ export class SASWebviewPanel {
                 }
 
                 function updateVariableDisplay() {
+                    const displayMode = document.getElementById('variable-display-mode').value;
+                    const sidebar = document.querySelector('.sidebar');
+
+                    // Adjust sidebar width based on display mode
+                    if (displayMode === 'name') {
+                        sidebar.className = 'sidebar compact';
+                    } else if (displayMode === 'both') {
+                        sidebar.className = 'sidebar expanded';
+                    } else {
+                        sidebar.className = 'sidebar';
+                    }
+
                     // Update sidebar variable list
-                    const variablesList = document.querySelector('.variables');
+                    const variablesList = document.querySelector('.variables-container');
                     variablesList.innerHTML = '';
 
                     metadata.variables.forEach((variable, index) => {
@@ -716,13 +751,13 @@ export class SASWebviewPanel {
                             toggleColumn(variable.name, e.target.checked);
                         });
 
-                        const label = document.createElement('label');
-                        label.htmlFor = 'var-' + index;
-                        label.innerHTML = getVariableDisplayText(variable);
-                        label.title = getVariableTooltip(variable.name);
+                        const textElement = document.createElement('span');
+                        textElement.className = displayMode === 'both' ? 'variable-text show-both' : 'variable-text';
+                        textElement.innerHTML = getVariableDisplayText(variable);
+                        textElement.title = getVariableTooltip(variable.name);
 
                         item.appendChild(checkbox);
-                        item.appendChild(label);
+                        item.appendChild(textElement);
                         variablesList.appendChild(item);
                     });
 
