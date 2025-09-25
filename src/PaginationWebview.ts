@@ -652,6 +652,26 @@ export function getPaginationHTML(metadata: any): string {
                         <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px;">Select All</button>
                         <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px;">Clear All</button>
                     </div>
+
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vscode-panel-border);">
+                        <div style="margin-bottom: 8px;">
+                            <label for="keep-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold;">KEEP (comma-separated):</label>
+                            <input type="text" id="keep-input"
+                                   placeholder="e.g., USUBJID, AGE, WEIGHT"
+                                   style="width: 100%; padding: 4px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px;"
+                                   title="Keep only these variables (comma-separated, case-insensitive)">
+                            <button class="btn" id="apply-keep-btn" style="width: 100%; margin-top: 4px; font-size: 11px;">Apply Keep</button>
+                        </div>
+
+                        <div>
+                            <label for="drop-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold;">DROP (comma-separated):</label>
+                            <input type="text" id="drop-input"
+                                   placeholder="e.g., DESC_LONG, NOTE, CHAR_MIXED"
+                                   style="width: 100%; padding: 4px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px;"
+                                   title="Drop these variables (comma-separated, case-insensitive)">
+                            <button class="btn" id="apply-drop-btn" style="width: 100%; margin-top: 4px; font-size: 11px;">Apply Drop</button>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="variables-container" id="variables-container">
@@ -977,6 +997,41 @@ export function getPaginationHTML(metadata: any): string {
                 deselectAllBtn.addEventListener('click', () => {
                     deselectAllVariables();
                 });
+
+                // KEEP and DROP functionality
+                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const applyKeepBtn = document.getElementById('apply-keep-btn');
+                const applyDropBtn = document.getElementById('apply-drop-btn');
+
+                if (applyKeepBtn) {
+                    applyKeepBtn.addEventListener('click', () => {
+                        applyKeepVariables();
+                    });
+                }
+
+                if (applyDropBtn) {
+                    applyDropBtn.addEventListener('click', () => {
+                        applyDropVariables();
+                    });
+                }
+
+                // Allow Enter key to apply KEEP/DROP
+                if (keepInput) {
+                    keepInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            applyKeepVariables();
+                        }
+                    });
+                }
+
+                if (dropInput) {
+                    dropInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            applyDropVariables();
+                        }
+                    });
+                }
                 displayModeSelect.addEventListener('change', () => {
                     updateDisplayMode();
                 });
@@ -1100,6 +1155,128 @@ export function getPaginationHTML(metadata: any): string {
                     errorMessage.style.backgroundColor = 'var(--vscode-errorBackground)';
                     errorMessage.style.color = 'var(--vscode-errorForeground)';
                 }
+            }
+
+            function applyKeepVariables() {
+                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                const keepText = keepInput.value.trim();
+
+                if (!keepText) {
+                    return; // Nothing to do if empty
+                }
+
+                // Clear DROP input when KEEP is applied
+                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                dropInput.value = '';
+
+                // Parse variable names (comma-separated, case-insensitive)
+                const keepVarNames = keepText.split(',').map(v => v.trim().toUpperCase()).filter(v => v);
+
+                // Create a case-insensitive lookup map
+                const variableMap = new Map<string, string>();
+                allVariables.forEach(v => {
+                    variableMap.set(v.name.toUpperCase(), v.name);
+                });
+
+                // Find matching variables (case-insensitive)
+                const validKeepVars = new Set<string>();
+                const notFound: string[] = [];
+
+                keepVarNames.forEach(varName => {
+                    if (variableMap.has(varName)) {
+                        validKeepVars.add(variableMap.get(varName));
+                    } else {
+                        notFound.push(varName);
+                    }
+                });
+
+                if (notFound.length > 0) {
+                    // Show warning but continue with valid variables
+                    const warningDiv = document.createElement('div');
+                    warningDiv.style.cssText = 'background: var(--vscode-inputValidation-warningBackground); color: var(--vscode-inputValidation-warningForeground); padding: 8px; margin: 4px 0; border-radius: 3px; font-size: 11px;';
+                    warningDiv.textContent = 'Variables not found: ' + notFound.join(', ');
+                    const container = keepInput.parentElement;
+                    const existingWarning = container.querySelector('.warning-message');
+                    if (existingWarning) {
+                        existingWarning.remove();
+                    }
+                    warningDiv.className = 'warning-message';
+                    container.appendChild(warningDiv);
+                    setTimeout(() => warningDiv.remove(), 5000);
+                }
+
+                if (validKeepVars.size > 0) {
+                    // Update all checkboxes based on KEEP list
+                    document.querySelectorAll('.variable-checkbox').forEach((cb: HTMLInputElement) => {
+                        const varName = cb.dataset.variable;
+                        cb.checked = validKeepVars.has(varName);
+                    });
+
+                    // Update selection and reload
+                    updateSelectedColumns();
+                    updateSelectedCount();
+                    loadPage(currentPage);
+                }
+            }
+
+            function applyDropVariables() {
+                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const dropText = dropInput.value.trim();
+
+                if (!dropText) {
+                    return; // Nothing to do if empty
+                }
+
+                // Clear KEEP input when DROP is applied
+                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                keepInput.value = '';
+
+                // Parse variable names (comma-separated, case-insensitive)
+                const dropVarNames = dropText.split(',').map(v => v.trim().toUpperCase()).filter(v => v);
+
+                // Create a case-insensitive lookup map
+                const variableMap = new Map<string, string>();
+                allVariables.forEach(v => {
+                    variableMap.set(v.name.toUpperCase(), v.name);
+                });
+
+                // Find matching variables to drop (case-insensitive)
+                const validDropVars = new Set<string>();
+                const notFound: string[] = [];
+
+                dropVarNames.forEach(varName => {
+                    if (variableMap.has(varName)) {
+                        validDropVars.add(variableMap.get(varName));
+                    } else {
+                        notFound.push(varName);
+                    }
+                });
+
+                if (notFound.length > 0) {
+                    // Show warning but continue with valid variables
+                    const warningDiv = document.createElement('div');
+                    warningDiv.style.cssText = 'background: var(--vscode-inputValidation-warningBackground); color: var(--vscode-inputValidation-warningForeground); padding: 8px; margin: 4px 0; border-radius: 3px; font-size: 11px;';
+                    warningDiv.textContent = 'Variables not found: ' + notFound.join(', ');
+                    const container = dropInput.parentElement;
+                    const existingWarning = container.querySelector('.warning-message');
+                    if (existingWarning) {
+                        existingWarning.remove();
+                    }
+                    warningDiv.className = 'warning-message';
+                    container.appendChild(warningDiv);
+                    setTimeout(() => warningDiv.remove(), 5000);
+                }
+
+                // Select all variables EXCEPT those in the DROP list
+                document.querySelectorAll('.variable-checkbox').forEach((cb: HTMLInputElement) => {
+                    const varName = cb.dataset.variable;
+                    cb.checked = !validDropVars.has(varName);
+                });
+
+                // Update selection and reload
+                updateSelectedColumns();
+                updateSelectedCount();
+                loadPage(currentPage);
             }
 
             function applyFilter() {
@@ -1260,6 +1437,12 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function selectAllVariables() {
+                // Clear KEEP/DROP inputs when Select All is used
+                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                if (keepInput) keepInput.value = '';
+                if (dropInput) dropInput.value = '';
+
                 document.querySelectorAll('.variable-checkbox').forEach(cb => cb.checked = true);
                 updateSelectedColumns();
                 updateSelectedCount();
@@ -1267,6 +1450,12 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function deselectAllVariables() {
+                // Clear KEEP/DROP inputs when Clear All is used
+                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                if (keepInput) keepInput.value = '';
+                if (dropInput) dropInput.value = '';
+
                 const checkboxes = document.querySelectorAll('.variable-checkbox');
                 checkboxes.forEach((cb) => {
                     if (cb.dataset && cb.dataset.variable) {
