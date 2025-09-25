@@ -17,9 +17,14 @@ py -m pip install pandas pyreadstat numpy
 # Full Node.js path required on Windows
 "C:\nodejs\node-v22.19.0-win-x64\node.exe" node_modules/typescript/lib/tsc.js -p .
 
-# Or use npm scripts (requires Node.js in PATH)
-npm run compile      # One-time compilation
-npm run watch        # Watch mode for development
+# Or use npm scripts with full path
+"C:\nodejs\node-v22.19.0-win-x64\npm.cmd" run compile      # One-time compilation
+"C:\nodejs\node-v22.19.0-win-x64\npm.cmd" run watch        # Watch mode for development
+
+# Node.js installation path
+Node.js: C:\nodejs\node-v22.19.0-win-x64\node.exe
+NPM: C:\nodejs\node-v22.19.0-win-x64\npm.cmd
+NPX: C:\nodejs\node-v22.19.0-win-x64\npx.cmd
 ```
 
 ### Testing
@@ -28,6 +33,9 @@ npm run watch        # Watch mode for development
 py python/sas_reader.py metadata "path/to/test.sas7bdat"
 py python/sas_reader.py data "path/to/test.sas7bdat" 0 100
 py test_python.py
+
+# Sample test datasets location
+# C:\sas\Test_Ext\*.sas7bdat
 
 # VS Code Extension Testing
 # Press F5 in VS Code to launch Extension Development Host

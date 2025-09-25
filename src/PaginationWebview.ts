@@ -39,6 +39,8 @@ export function getPaginationHTML(metadata: any): string {
                 height: 100vh;
                 display: flex;
                 flex-direction: column;
+                /* Performance optimization */
+                contain: layout style;
             }
 
             .main-container {
@@ -59,6 +61,9 @@ export function getPaginationHTML(metadata: any): string {
                 flex-direction: column;
                 overflow: hidden;
                 position: relative;
+                /* Performance: isolate sidebar rendering */
+                contain: layout style paint;
+                will-change: transform;
             }
 
             .sidebar-header {
@@ -114,6 +119,9 @@ export function getPaginationHTML(metadata: any): string {
                 overflow-x: visible;
                 padding: 8px;
                 position: relative;
+                /* Performance: optimize scrolling */
+                will-change: scroll-position;
+                contain: layout style paint;
             }
 
             .variable-item {
@@ -157,7 +165,7 @@ export function getPaginationHTML(metadata: any): string {
                 display: inline-block;
             }
 
-            /* Custom tooltip styles for sidebar variables */
+            /* Simplified tooltip for better performance */
             .variable-text[data-tooltip]:hover::after {
                 content: attr(data-tooltip);
                 position: absolute;
@@ -170,11 +178,12 @@ export function getPaginationHTML(metadata: any): string {
                 white-space: pre-line;
                 z-index: 10000;
                 max-width: 400px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 pointer-events: none;
                 top: 100%;
                 left: 0;
                 margin-top: 5px;
+                /* Performance: use transform for GPU acceleration */
+                transform: translateZ(0);
             }
 
             /* Arrow indicator for tooltip */
@@ -239,6 +248,9 @@ export function getPaginationHTML(metadata: any): string {
                 border: 1px solid var(--vscode-panel-border);
                 border-radius: 4px;
                 margin-bottom: 15px;
+                /* Performance: isolate table rendering */
+                contain: layout style paint;
+                will-change: contents;
             }
 
             table {
@@ -454,8 +466,66 @@ export function getPaginationHTML(metadata: any): string {
             .loading {
                 text-align: center;
                 padding: 40px;
-                font-style: italic;
                 color: var(--vscode-descriptionForeground);
+            }
+
+            /* Custom spinner animation */
+            .spinner {
+                width: 40px;
+                height: 40px;
+                margin: 20px auto;
+                border: 4px solid var(--vscode-panel-border);
+                border-top: 4px solid var(--vscode-focusBorder);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+            }
+
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+
+            /* Skeleton loader for table rows */
+            .skeleton-row {
+                display: table-row;
+                animation: pulse 1.5s ease-in-out infinite;
+            }
+
+            .skeleton-cell {
+                display: table-cell;
+                padding: 8px;
+                border: 1px solid var(--vscode-panel-border);
+            }
+
+            .skeleton-content {
+                height: 14px;
+                background: linear-gradient(90deg,
+                    var(--vscode-panel-border) 25%,
+                    var(--vscode-badge-background) 50%,
+                    var(--vscode-panel-border) 75%);
+                background-size: 200% 100%;
+                animation: shimmer 1.5s infinite;
+                border-radius: 2px;
+            }
+
+            @keyframes shimmer {
+                0% { background-position: 200% 0; }
+                100% { background-position: -200% 0; }
+            }
+
+            @keyframes pulse {
+                0%, 100% { opacity: 1; }
+                50% { opacity: 0.6; }
+            }
+
+            /* Smooth fade transitions */
+            .fade-in {
+                animation: fadeIn 0.3s ease-in;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
             }
 
             .error {
@@ -523,7 +593,10 @@ export function getPaginationHTML(metadata: any): string {
                 </div>
 
                 <div class="table-container">
-                    <div id="loading-message" class="loading">Loading data...</div>
+                    <div id="loading-message" class="loading">
+                        <div class="spinner"></div>
+                        <div id="loading-text">Loading data...</div>
+                    </div>
                     <div id="error-message" class="error" style="display: none;"></div>
                     <table id="data-table" style="display: none;">
                         <thead id="table-header">
@@ -581,7 +654,7 @@ export function getPaginationHTML(metadata: any): string {
 
             // Pagination state
             let currentPage = 1;
-            let pageSize = 100;
+            let pageSize = parseInt(document.getElementById('page-size-select')?.value || '100'); // Respect user preference
             let totalRows = ${metadata.total_rows};
             let filteredRows = totalRows; // Total rows after filtering
             let totalPages = Math.ceil(filteredRows / pageSize);
@@ -625,34 +698,31 @@ export function getPaginationHTML(metadata: any): string {
 
             // Initialize
             function init() {
-                console.log('Pagination viewer initialized');
-                
-                // Debug: Check if elements exist
-                console.log('Elements found:');
-                console.log('- selectAllBtn:', !!selectAllBtn);
-                console.log('- deselectAllBtn:', !!deselectAllBtn);
-                console.log('- variablesContainer:', !!variablesContainer);
-                
                 // Populate variables list dynamically
                 populateVariablesList();
-                
+
                 // Initialize selected columns with all variables
                 selectedColumns = allVariables.map(v => v.name);
                 updateSelectedCount();
+
+                // Get initial page size from dropdown
+                pageSize = parseInt(pageSizeSelect.value);
+                totalPages = Math.ceil(filteredRows / pageSize);
                 updatePaginationInfo();
                 setupEventListeners();
-                
+
                 // Set initial display mode explicitly
                 displayMode = 'name';
                 displayModeSelect.value = 'name';
-                console.log('Initial display mode set to:', displayMode);
-                
-                loadPage(1);
+
+                // Signal that webview is ready, then load first page
+                vscode.postMessage({ command: 'webviewReady' });
+
+                // Load first page after signaling ready
+                setTimeout(() => loadPage(1), 100);
             }
 
             function populateVariablesList() {
-                console.log('Populating variables list with', allVariables.length, 'variables');
-                
                 if (!variablesContainer) {
                     console.error('Variables container not found');
                     return;
@@ -671,11 +741,6 @@ export function getPaginationHTML(metadata: any): string {
                     checkbox.setAttribute('data-variable', variable.name);
                     checkbox.checked = true;
                     
-                    // Debug logging
-                    if (index === 0) {
-                        console.log('Creating first variable item:', variable.name);
-                        console.log('Checkbox created:', checkbox);
-                    }
                     
                     const span = document.createElement('span');
                     span.className = 'variable-text';
@@ -714,31 +779,7 @@ export function getPaginationHTML(metadata: any): string {
                     
                     variablesContainer.appendChild(item);
                     
-                    // Debug first item
-                    if (index === 0) {
-                        console.log('First item appended to container');
-                        console.log('Item HTML:', item.outerHTML);
-                        console.log('Checkbox in DOM:', item.querySelector('.variable-checkbox'));
-                        console.log('Span tooltip:', span.getAttribute('title'));
-                    }
                 });
-                
-                console.log('Variables list populated. Checking first tooltip:', 
-                    document.querySelector('.variable-text')?.getAttribute('data-tooltip')?.substring(0, 50));
-                
-                // Final verification
-                setTimeout(() => {
-                    const checkboxes = document.querySelectorAll('.variable-checkbox');
-                    const tooltipElements = document.querySelectorAll('.variable-text[title]');
-                    console.log('Final check - Checkboxes found:', checkboxes.length);
-                    console.log('Final check - Elements with tooltips:', tooltipElements.length);
-                    if (checkboxes.length > 0) {
-                        console.log('First checkbox visible:', window.getComputedStyle(checkboxes[0]).display !== 'none');
-                    }
-                    if (tooltipElements.length > 0) {
-                        console.log('First tooltip content:', tooltipElements[0].getAttribute('title'));
-                    }
-                }, 100);
             }
 
             function setupEventListeners() {
@@ -784,24 +825,20 @@ export function getPaginationHTML(metadata: any): string {
                     }
                 });
                 
-                // Variable selection event listeners with debugging
+                // Variable selection event listeners
                 selectAllBtn.addEventListener('click', () => {
-                    console.log('Select All button clicked');
                     selectAllVariables();
                 });
                 deselectAllBtn.addEventListener('click', () => {
-                    console.log('Clear All button clicked');
                     deselectAllVariables();
                 });
                 displayModeSelect.addEventListener('change', () => {
-                    console.log('Display mode changed to:', displayModeSelect.value);
                     updateDisplayMode();
                 });
                 
                 // Variable checkbox listeners - use event delegation
                 variablesContainer.addEventListener('change', (e) => {
                     if (e.target.classList.contains('variable-checkbox')) {
-                        console.log('Variable checkbox changed:', e.target.dataset.variable, e.target.checked);
                         handleVariableSelection();
                     }
                 });
@@ -813,7 +850,6 @@ export function getPaginationHTML(metadata: any): string {
                         const checkbox = item.querySelector('.variable-checkbox');
                         if (checkbox) {
                             checkbox.checked = !checkbox.checked;
-                            console.log('Variable item clicked:', checkbox.dataset.variable, checkbox.checked);
                             handleVariableSelection();
                         }
                     }
@@ -828,18 +864,16 @@ export function getPaginationHTML(metadata: any): string {
 
             function loadPage(page) {
                 if (isLoading) return;
-                
-                console.log('Loading page', page, 'with', pageSize, 'rows per page');
+
                 isLoading = true;
                 currentPage = page;
-                
+
                 showLoading();
                 updatePaginationInfo();
-                
+
                 const startRow = (page - 1) * pageSize;
-                
+
                 // Request data from extension with current filter and selected variables
-                console.log('Requesting data with selectedVars:', selectedColumns);
                 vscode.postMessage({
                     command: 'loadData',
                     data: {
@@ -855,7 +889,37 @@ export function getPaginationHTML(metadata: any): string {
                 table.style.display = 'none';
                 errorMessage.style.display = 'none';
                 loadingMessage.style.display = 'block';
-                loadingMessage.textContent = 'Loading page ' + currentPage + '...';
+                const loadingText = document.getElementById('loading-text');
+                if (loadingText) {
+                    loadingText.textContent = 'Loading page ' + currentPage + '...';
+                }
+
+                // Show skeleton rows for better UX
+                showSkeletonRows();
+            }
+
+            function showSkeletonRows() {
+                // Create skeleton table while loading
+                if (columns.length > 0 && table) {
+                    table.style.display = 'table';
+                    table.style.opacity = '0.5';
+                    tbody.innerHTML = '';
+
+                    // Create 5 skeleton rows
+                    for (let i = 0; i < Math.min(5, pageSize); i++) {
+                        const tr = document.createElement('tr');
+                        tr.className = 'skeleton-row';
+
+                        columns.forEach(() => {
+                            const td = document.createElement('td');
+                            td.className = 'skeleton-cell';
+                            td.innerHTML = '<div class="skeleton-content"></div>';
+                            tr.appendChild(td);
+                        });
+
+                        tbody.appendChild(tr);
+                    }
+                }
             }
 
             function showError(message) {
@@ -870,6 +934,8 @@ export function getPaginationHTML(metadata: any): string {
                 loadingMessage.style.display = 'none';
                 errorMessage.style.display = 'none';
                 table.style.display = 'table';
+                table.style.opacity = '1';
+                table.classList.add('fade-in');
                 isLoading = false;
             }
 
@@ -893,7 +959,6 @@ export function getPaginationHTML(metadata: any): string {
 
             function applyFilter() {
                 const whereClause = whereInput.value.trim();
-                console.log('Applying filter:', whereClause);
                 
                 currentWhereClause = whereClause;
                 currentPage = 1;
@@ -917,7 +982,6 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function clearFilter() {
-                console.log('Clearing filter...');
                 whereInput.value = '';
                 currentWhereClause = '';
                 filteredRows = totalRows;
@@ -959,7 +1023,6 @@ export function getPaginationHTML(metadata: any): string {
             function renderTable(data, cols) {
                 // Update columns - use selected columns if available, otherwise use all
                 columns = selectedColumns.length > 0 ? selectedColumns : cols;
-                console.log('Rendering table with columns:', columns);
                 
                 // Update headers using the display mode
                 updateTableHeaders();
@@ -1002,28 +1065,23 @@ export function getPaginationHTML(metadata: any): string {
                     tbody.appendChild(tr);
                 });
 
-                console.log('Rendered', data.length, 'rows with', columns.length, 'selected columns');
                 showData();
             }
 
             // Handle messages from extension
             window.addEventListener('message', event => {
                 const message = event.data;
-                console.log('Received message:', message.type);
 
                 switch (message.type) {
                     case 'initialData':
-                        console.log('Processing initial data:', message.data.length, 'rows');
                         renderTable(message.data, message.columns);
                         break;
 
                     case 'dataChunk':
-                        console.log('Processing data chunk:', message.data.length, 'rows for page', currentPage);
                         renderTable(message.data, message.columns);
                         break;
 
                     case 'filterResult':
-                        console.log('Filter applied. Filtered rows:', message.filteredRows);
                         filteredRows = message.filteredRows;
                         totalPages = Math.ceil(filteredRows / pageSize);
                         currentPage = 1;
@@ -1047,16 +1105,12 @@ export function getPaginationHTML(metadata: any): string {
 
             // Variable selection functions
             function handleVariableSelection() {
-                console.log('Handling variable selection change...');
                 updateSelectedColumns();
                 updateSelectedCount();
-                
+
                 // Reload current page with new column selection
                 if (selectedColumns.length > 0) {
-                    console.log('Reloading page', currentPage, 'with', selectedColumns.length, 'selected columns');
                     loadPage(currentPage);
-                } else {
-                    console.log('No columns selected, showing message');
                 }
             }
 
@@ -1068,21 +1122,14 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function deselectAllVariables() {
-                console.log('Deselecting all variables...');
                 const checkboxes = document.querySelectorAll('.variable-checkbox');
-                console.log('Found', checkboxes.length, 'checkboxes to deselect');
-                
-                checkboxes.forEach((cb, index) => {
+                checkboxes.forEach((cb) => {
                     if (cb.dataset && cb.dataset.variable) {
-                        console.log('Deselecting checkbox', index, ':', cb.dataset.variable);
                         cb.checked = false;
                     }
                 });
-                
                 updateSelectedColumns();
                 updateSelectedCount();
-                
-                console.log('After deselect all, selected columns:', selectedColumns.length);
             }
 
             function updateSelectedColumns() {
@@ -1092,11 +1139,9 @@ export function getPaginationHTML(metadata: any): string {
                         selectedColumns.push(cb.dataset.variable);
                     }
                 });
-                console.log('Selected columns updated:', selectedColumns.length, selectedColumns);
-                
+
                 // If no columns selected, show a message but don't auto-select
                 if (selectedColumns.length === 0) {
-                    console.log('No columns selected - will show message');
                     showNoColumnsMessage();
                 } else {
                     hideNoColumnsMessage();
@@ -1110,8 +1155,6 @@ export function getPaginationHTML(metadata: any): string {
 
             function updateDisplayMode() {
                 displayMode = displayModeSelect.value;
-                console.log('updateDisplayMode called - mode:', displayMode);
-                console.log('Variable text elements found:', document.querySelectorAll('.variable-text').length);
                 
                 // Update variable text display
                 document.querySelectorAll('.variable-text').forEach((span, index) => {
@@ -1152,15 +1195,6 @@ export function getPaginationHTML(metadata: any): string {
                         span.setAttribute('title', tooltip);
                         span.setAttribute('data-tooltip', tooltip);
                         
-                        // Debug tooltip setting
-                        if (index < 3) {
-                            console.log('Set tooltip for', name, ':', tooltip);
-                        }
-                        
-                        // Debug first few items
-                        if (index < 3) {
-                            console.log('Updated variable', index, ':', name, '→', newText);
-                        }
                     }
                 });
                 
@@ -1212,66 +1246,10 @@ export function getPaginationHTML(metadata: any): string {
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', () => {
                     init();
-                    // Verify after init
-                    setTimeout(() => {
-                        const checkboxes = document.querySelectorAll('.variable-checkbox');
-                        const tooltipElements = document.querySelectorAll('.variable-text[title]');
-                        console.log('=== FINAL VERIFICATION ===');
-                        console.log('Checkboxes found:', checkboxes.length);
-                        console.log('Elements with title tooltips:', tooltipElements.length);
-                        if (checkboxes.length > 0) {
-                            const firstCheckbox = checkboxes[0];
-                            const styles = window.getComputedStyle(firstCheckbox);
-                            console.log('First checkbox styles:');
-                            console.log('  - display:', styles.display);
-                            console.log('  - visibility:', styles.visibility);
-                            console.log('  - opacity:', styles.opacity);
-                            console.log('  - width:', styles.width);
-                            console.log('  - height:', styles.height);
-                        }
-                        if (tooltipElements.length > 0) {
-                            console.log('First tooltip (title):', tooltipElements[0].getAttribute('title'));
-                        }
-                        // Also check data-tooltip
-                        const dataTooltipElements = document.querySelectorAll('.variable-text[data-tooltip]');
-                        console.log('Elements with data-tooltip:', dataTooltipElements.length);
-                        if (dataTooltipElements.length > 0) {
-                            console.log('First data-tooltip:', dataTooltipElements[0].getAttribute('data-tooltip'));
-                        }
-                    }, 500);
                 });
             } else {
                 init();
-                // Verify after init
-                setTimeout(() => {
-                    const checkboxes = document.querySelectorAll('.variable-checkbox');
-                    const tooltipElements = document.querySelectorAll('.variable-text[title]');
-                    console.log('=== FINAL VERIFICATION ===');
-                    console.log('Checkboxes found:', checkboxes.length);
-                    console.log('Elements with title tooltips:', tooltipElements.length);
-                    if (checkboxes.length > 0) {
-                        const firstCheckbox = checkboxes[0];
-                        const styles = window.getComputedStyle(firstCheckbox);
-                        console.log('First checkbox styles:');
-                        console.log('  - display:', styles.display);
-                        console.log('  - visibility:', styles.visibility);
-                        console.log('  - opacity:', styles.opacity);
-                        console.log('  - width:', styles.width);
-                        console.log('  - height:', styles.height);
-                    }
-                    if (tooltipElements.length > 0) {
-                        console.log('First tooltip (title):', tooltipElements[0].getAttribute('title'));
-                    }
-                    // Also check data-tooltip
-                    const dataTooltipElements = document.querySelectorAll('.variable-text[data-tooltip]');
-                    console.log('Elements with data-tooltip:', dataTooltipElements.length);
-                    if (dataTooltipElements.length > 0) {
-                        console.log('First data-tooltip:', dataTooltipElements[0].getAttribute('data-tooltip'));
-                    }
-                }, 500);
             }
-
-            console.log('Pagination SAS Dataset Viewer initialized');
         </script>
     </body>
     </html>`;

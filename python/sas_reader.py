@@ -96,8 +96,7 @@ class SASReader:
 
         try:
             original_clause = where_clause.strip()
-            print(f"DEBUG: Available columns: {self.column_names}", file=sys.stderr)
-            print(f"DEBUG: Original WHERE clause: '{original_clause}'", file=sys.stderr)
+            # Debug prints removed for performance
             
             # Use pandas query method which is more robust
             # First normalize the clause for pandas query syntax
@@ -116,21 +115,14 @@ class SASReader:
             # Handle single = to ==
             query_clause = re.sub(r'([^!<>=])\s*=\s*([^=])', r'\1 == \2', query_clause)
             
-            print(f"DEBUG: Query clause for pandas: '{query_clause}'", file=sys.stderr)
-            
             # Use pandas query method instead of eval
             filtered_df = self.df.query(query_clause)
             
             # Return the boolean mask
             condition = self.df.index.isin(filtered_df.index)
-            print(f"DEBUG: Filter matched {condition.sum()} rows out of {len(self.df)}", file=sys.stderr)
-            
             return condition
 
         except Exception as e:
-            print(f"DEBUG: WHERE clause error: {str(e)}", file=sys.stderr)
-            print(f"DEBUG: Query clause that failed: '{query_clause}'", file=sys.stderr)
-            
             # Fallback: try simple column-based filtering for basic cases
             try:
                 return self.parse_simple_condition(original_clause)
@@ -139,7 +131,6 @@ class SASReader:
     
     def parse_simple_condition(self, where_clause: str) -> Optional[pd.Series]:
         """Fallback parser for simple conditions like COLUMN = 'VALUE'"""
-        print(f"DEBUG: Trying simple condition parser for: '{where_clause}'", file=sys.stderr)
         
         # Handle simple equality: COLUMN = 'VALUE'
         match = re.match(r'^\s*(\w+)\s*=\s*[\'"]([^\'"]*)[\'"]?\s*$', where_clause, re.IGNORECASE)
@@ -154,9 +145,7 @@ class SASReader:
                     break
             
             if actual_col:
-                print(f"DEBUG: Simple condition - column '{actual_col}' == '{value}'", file=sys.stderr)
                 condition = self.df[actual_col] == value
-                print(f"DEBUG: Simple condition matched {condition.sum()} rows", file=sys.stderr)
                 return condition
         
         # Handle simple numeric comparison: COLUMN > VALUE
@@ -173,8 +162,6 @@ class SASReader:
             
             if actual_col:
                 numeric_value = float(value)
-                print(f"DEBUG: Simple numeric condition - column '{actual_col}' {operator} {numeric_value}", file=sys.stderr)
-                
                 if operator == '>':
                     condition = self.df[actual_col] > numeric_value
                 elif operator == '<':
@@ -189,8 +176,6 @@ class SASReader:
                     condition = self.df[actual_col] != numeric_value
                 else:
                     raise ValueError(f"Unsupported operator: {operator}")
-                
-                print(f"DEBUG: Simple numeric condition matched {condition.sum()} rows", file=sys.stderr)
                 return condition
         
         raise ValueError(f"Could not parse simple condition: {where_clause}")
@@ -202,63 +187,54 @@ class SASReader:
             return {"error": "File not loaded"}
 
         try:
-            # Start with original dataframe
-            working_df = self.df.copy()
+            # OPTIMIZATION: Use view instead of copy when possible
+            working_df = self.df
 
             # Apply WHERE condition if provided
             filtered_rows = len(working_df)
             if where_clause:
                 condition = self.parse_where_condition(where_clause)
                 if condition is not None:
-                    working_df = working_df[condition]
+                    # OPTIMIZATION: Use loc for better performance
+                    working_df = working_df.loc[condition]
                     filtered_rows = len(working_df)
 
             # Select variables if specified
             if selected_vars:
-                # Filter out any variables that don't exist
-                valid_vars = [var for var in selected_vars if var in working_df.columns]
+                # OPTIMIZATION: Use intersection for faster validation
+                valid_vars = list(set(selected_vars) & set(working_df.columns))
+                # Preserve original order
+                valid_vars = [v for v in selected_vars if v in valid_vars]
                 if valid_vars:
                     working_df = working_df[valid_vars]
 
             # Apply pagination
             end_row = min(start_row + num_rows, len(working_df))
             page_df = working_df.iloc[start_row:end_row]
-            
-            # Debug: Print actual data extraction details
-            print(f"DEBUG: Extracting rows {start_row} to {end_row-1} from DataFrame with {len(working_df)} total rows", file=sys.stderr)
-            print(f"DEBUG: page_df shape: {page_df.shape}", file=sys.stderr)
 
-            # Convert to JSON-serializable format
-            data = []
-            valid_row_count = 0
-            for idx, row in page_df.iterrows():
-                row_data = {}
-                for col in page_df.columns:
-                    value = row[col]
-                    # Handle NaN and other special values
-                    if pd.isna(value):
-                        row_data[col] = None
-                    elif isinstance(value, (pd.Timestamp, pd.Period)):
-                        row_data[col] = str(value)
-                    elif hasattr(value, 'isoformat'):  # datetime, date, time objects
-                        row_data[col] = value.isoformat()
-                    elif isinstance(value, bytes):
-                        row_data[col] = value.decode('utf-8', errors='ignore')
-                    else:
-                        # Convert to standard Python types for JSON serialization
-                        if hasattr(value, 'item'):  # numpy types
-                            row_data[col] = value.item()
-                        else:
-                            row_data[col] = value
-                
-                # Only append if row has at least some data
-                if any(v is not None and v != '' for v in row_data.values()):
-                    data.append(row_data)
-                    valid_row_count += 1
-                else:
-                    print(f"DEBUG: Skipping empty row at index {idx}", file=sys.stderr)
+            # OPTIMIZATION: Use vectorized operations for data conversion
+            # Replace NaN with None for JSON serialization
+            page_df = page_df.where(pd.notnull(page_df), None)
 
-            print(f"DEBUG: Processed {valid_row_count} valid rows out of {len(page_df)} requested rows", file=sys.stderr)
+            # Convert to records more efficiently
+            data = page_df.to_dict('records')
+
+            # Fast type conversion for special types
+            for row in data:
+                for col, value in row.items():
+                    if value is not None:
+                        if isinstance(value, (pd.Timestamp, pd.Period)):
+                            row[col] = str(value)
+                        elif hasattr(value, 'isoformat'):
+                            row[col] = value.isoformat()
+                        elif isinstance(value, bytes):
+                            row[col] = value.decode('utf-8', errors='ignore')
+                        elif hasattr(value, 'item'):  # numpy types
+                            row[col] = value.item()
+
+            valid_row_count = len(data)
+
+            # Removed debug print for performance
             
             return {
                 "data": data,

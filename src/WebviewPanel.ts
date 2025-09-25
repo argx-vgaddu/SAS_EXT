@@ -30,17 +30,11 @@ export class SASWebviewPanel {
 
     public async initialize(): Promise<void> {
         try {
-            console.log('SASWebviewPanel: Starting initialization');
-
             this.panel.webview.options = {
                 enableScripts: true,
-                localResourceRoots: [] // Remove restriction for testing
+                localResourceRoots: []
             };
 
-            // CRITICAL FIX: Set up message handler BEFORE setting HTML (already done in constructor)
-            console.log('SASWebviewPanel: Message handler already set up in constructor');
-
-            // Wait a bit for webview to be ready
             await this.loadDataDirectly();
 
         } catch (error) {
@@ -51,93 +45,24 @@ export class SASWebviewPanel {
 
     private async loadDataDirectly(): Promise<void> {
         try {
-            console.log('SASWebviewPanel: Loading data directly');
-
             if (!this.document.metadata) {
                 console.error('SASWebviewPanel: No metadata available');
                 return;
             }
 
-            const totalRows = this.document.metadata.total_rows;
-            const useVirtualScrolling = true; // Always use virtual scrolling for consistent behavior
+            // Set HTML for pagination view
+            this.panel.webview.html = getPaginationHTML(this.document.metadata);
 
-            if (useVirtualScrolling) {
-                console.log(`SASWebviewPanel: Using virtual scrolling for dataset with ${totalRows} rows`);
+            // Store selected variables for later use
+            this.filterState.selectedVariables = this.document.metadata.variables.map(v => v.name);
 
-                // Use pagination approach for reliable data display
-                this.panel.webview.html = getPaginationHTML(this.document.metadata);
-                console.log('SASWebviewPanel: Virtual scrolling HTML set');
-
-                // CRITICAL FIX: Wait longer for webview to be ready
-                await new Promise(resolve => setTimeout(resolve, 500));
-
-                // Load first page (100 rows) for pagination
-                const initialRows = 100; // Load first page
-                const request: SASDataRequest = {
-                    filePath: this.document.uri.fsPath,
-                    startRow: 0,
-                    numRows: initialRows,
-                    selectedVars: this.document.metadata.variables.map(v => v.name),
-                    whereClause: ''
-                };
-
-                // Store selected variables for chunk loading
-                this.filterState.selectedVariables = this.document.metadata.variables.map(v => v.name);
-
-                const initialData = await this.document.getData(request);
-                console.log(`SASWebviewPanel: Initial data loaded - ${initialData.data.length} rows of ${totalRows} total`);
-
-                // CRITICAL FIX: Send initial data with proper structure
-                const message = {
-                    type: 'initialData',
-                    metadata: this.document.metadata,
-                    data: initialData.data,
-                    totalRows: totalRows,
-                    columns: initialData.columns
-                };
-
-                console.log('SASWebviewPanel: Preparing initial data message with', initialData.data.length, 'rows');
-
-                // Store the data to send when webview is ready
-                this.pendingInitialData = message;
-
-                // Try to send immediately if webview might be ready
-                if (this.webviewReady) {
-                    console.log('SASWebviewPanel: Webview ready, sending immediately');
-                    await this.panel.webview.postMessage(message);
-                    this.pendingInitialData = null;
-                } else {
-                    console.log('SASWebviewPanel: Webview not ready yet, will send when ready');
-                    // Also try after a delay as fallback
-                    setTimeout(async () => {
-                        if (this.pendingInitialData) {
-                            console.log('SASWebviewPanel: Sending data after timeout fallback');
-                            await this.panel.webview.postMessage(this.pendingInitialData);
-                            this.pendingInitialData = null;
-                        }
-                    }, 2000);
-                }
-            } else {
-                // Use regular loading for smaller datasets
-                const request: SASDataRequest = {
-                    filePath: this.document.uri.fsPath,
-                    startRow: 0,
-                    numRows: totalRows, // Load all rows for small datasets
-                    selectedVars: this.document.metadata.variables.map(v => v.name),
-                    whereClause: ''
-                };
-
-                const data = await this.document.getData(request);
-                console.log('SASWebviewPanel: Data loaded:', data);
-
-                // Update the HTML directly with the data
-                this.updateWebviewWithData(this.document.metadata, data);
-            }
+            // Let the pagination component handle data loading
 
         } catch (error) {
-            console.error('SASWebviewPanel: Error loading data directly:', error);
+            console.error('SASWebviewPanel: Error during setup:', error);
         }
     }
+
 
     private async sendMetadata(): Promise<void> {
         if (!this.document.metadata) return;
@@ -179,11 +104,8 @@ export class SASWebviewPanel {
     }
 
     private async onDidReceiveMessage(message: WebviewMessage): Promise<void> {
-        console.log('SASWebviewPanel: Received message:', message.command, message.data);
-
         switch (message.command) {
             case 'loadData':
-                console.log('SASWebviewPanel: Handling loadData request');
                 await this.handleLoadData(message.data);
                 break;
 
@@ -212,26 +134,20 @@ export class SASWebviewPanel {
                 break;
 
             case 'webviewReady':
-                console.log('SASWebviewPanel: Webview signaled ready');
                 this.webviewReady = true;
                 if (this.pendingInitialData) {
-                    console.log('SASWebviewPanel: Sending pending initial data');
                     await this.panel.webview.postMessage(this.pendingInitialData);
                     this.pendingInitialData = null;
                 }
                 break;
 
             default:
-                console.log(`Unknown command: ${message.command}`);
+                // Unknown command
+                break;
         }
     }
 
     private async handleLoadData(data: any): Promise<void> {
-        console.log('=== EXTENSION CHUNK REQUEST DEBUG ===');
-        console.log(`SASWebviewPanel: Loading chunk - startRow: ${data.startRow}, numRows: ${data.numRows}`);
-        console.log('Filter state:', this.filterState);
-        console.log('Document metadata exists:', !!this.document.metadata);
-        console.log('Document total rows:', this.document.metadata?.total_rows);
 
         const request: SASDataRequest = {
             filePath: this.document.uri.fsPath,
@@ -243,24 +159,8 @@ export class SASWebviewPanel {
             whereClause: data.whereClause || this.filterState.whereClause || ''
         };
 
-        console.log('Created request:', {
-            filePath: request.filePath,
-            startRow: request.startRow,
-            numRows: request.numRows,
-            selectedVarsCount: request.selectedVars?.length || 0,
-            whereClause: request.whereClause
-        });
-
         try {
-            console.log('Calling document.getData...');
             const result = await this.document.getData(request);
-            console.log(`SASWebviewPanel: Chunk loaded successfully - ${result.data.length} rows`);
-            console.log('Result details:', {
-                dataLength: result.data.length,
-                totalRows: result.total_rows,
-                columnsCount: result.columns.length,
-                firstRowKeys: result.data.length > 0 ? Object.keys(result.data[0]).length : 0
-            });
 
             // Send chunk back to webview for virtual scrolling
             const response = {
@@ -271,20 +171,9 @@ export class SASWebviewPanel {
                 columns: result.columns
             };
             
-            console.log('Sending response to webview:', {
-                type: response.type,
-                startRow: response.startRow,
-                dataLength: response.data.length,
-                totalRows: response.totalRows,
-                columnsCount: response.columns.length
-            });
-            
             await this.panel.webview.postMessage(response);
-            console.log(`SASWebviewPanel: Chunk sent successfully - startRow: ${data.startRow}`);
         } catch (error) {
-            console.error('=== CHUNK REQUEST ERROR ===');
-            console.error('Error loading chunk:', error);
-            console.error('Request details:', request);
+            console.error('Error loading data:', error);
             
             await this.panel.webview.postMessage({
                 type: 'error',
@@ -338,15 +227,12 @@ export class SASWebviewPanel {
     }
 
     private async handleApplyFilterPagination(data: any): Promise<void> {
-        console.log('SASWebviewPanel: Applying pagination filter:', data);
-        
         const whereClause = data.whereClause || '';
         this.filterState.whereClause = whereClause;
-        
+
         try {
             if (whereClause.trim() === '') {
                 // Clearing filter - return to full dataset
-                console.log('Clearing filter - returning to full dataset');
                 await this.panel.webview.postMessage({
                     type: 'filterResult',
                     filteredRows: this.document.metadata?.total_rows || 0,
@@ -451,24 +337,7 @@ export class SASWebviewPanel {
             .replace(/\//g, '&#x2F;');
     }
 
-    private updateWebviewWithData(metadata: any, data: any): void {
-        console.log('SASWebviewPanel: Updating webview with virtual scrolling');
-
-        // Use the complete virtual scrolling implementation
-        this.panel.webview.html = getVirtualScrollingHTMLComplete(metadata);
-
-        // Send initial data after HTML loads
-        setTimeout(() => {
-            this.panel.webview.postMessage({
-                type: 'initialData',
-                data: data.data,
-                columns: data.columns,
-                metadata: metadata,
-                totalRows: data.total_rows
-            });
-        }, 100);
-
-    }
+    // Removed unused methods - data loading handled by pagination component
 
     private updateWebviewWithDataOld(metadata: any, data: any): void {
         // Old implementation kept for reference - not used anymore
