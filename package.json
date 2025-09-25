@@ -32,7 +32,17 @@
         "title": "Open SAS Dataset",
         "category": "SAS"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "SAS Dataset Viewer",
+      "properties": {
+        "sasDatasetViewer.enableDebugLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logging for the SAS Dataset Viewer extension"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",

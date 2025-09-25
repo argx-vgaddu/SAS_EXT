@@ -1,12 +1,15 @@
 import * as vscode from 'vscode';
-import * as path from 'path';
 import { SASDatasetDocument } from './SasDataProvider';
 import { WebviewMessage, FilterState, SASDataRequest } from './types';
-import { getVirtualScrollingHTMLComplete } from './VirtualScrollingWebviewComplete';
-import { getVirtualScrollingHTML } from './VirtualScrollingWebview';
 import { getPaginationHTML } from './PaginationWebview';
+import { Logger } from './utils/logger';
 
+/**
+ * Manages the webview panel for displaying SAS dataset data
+ * Handles communication between VS Code and the webview UI
+ */
 export class SASWebviewPanel {
+    private readonly logger = Logger.createScoped('SASWebviewPanel');
     private filterState: FilterState;
     private disposed: boolean = false;
     private currentWhereClause: string = '';
@@ -24,31 +27,46 @@ export class SASWebviewPanel {
             variableOrder: []
         };
 
+        this.logger.debug('WebviewPanel created');
         this.panel.onDidDispose(() => this.dispose(), null, this.context.subscriptions);
         this.panel.webview.onDidReceiveMessage(this.onDidReceiveMessage, this, this.context.subscriptions);
     }
 
+    /**
+     * Initializes the webview panel and loads the initial UI
+     */
     public async initialize(): Promise<void> {
         try {
+            this.logger.debug('Initializing webview panel');
+
             this.panel.webview.options = {
                 enableScripts: true,
                 localResourceRoots: []
             };
 
             await this.loadDataDirectly();
+            this.logger.info('Webview panel initialized successfully');
 
         } catch (error) {
-            console.error('SASWebviewPanel: Error during initialization:', error);
-            vscode.window.showErrorMessage(`Failed to initialize SAS viewer: ${error}`);
+            this.logger.error('Error during initialization', error);
+            throw error;
         }
     }
 
+    /**
+     * Sets up the webview with pagination HTML and initial state
+     */
     private async loadDataDirectly(): Promise<void> {
         try {
             if (!this.document.metadata) {
-                console.error('SASWebviewPanel: No metadata available');
+                this.logger.error('No metadata available');
                 return;
             }
+
+            this.logger.debug('Setting up pagination view', {
+                totalRows: this.document.metadata.total_rows,
+                totalVariables: this.document.metadata.total_variables
+            });
 
             // Set HTML for pagination view
             this.panel.webview.html = getPaginationHTML(this.document.metadata);
@@ -59,7 +77,8 @@ export class SASWebviewPanel {
             // Let the pagination component handle data loading
 
         } catch (error) {
-            console.error('SASWebviewPanel: Error during setup:', error);
+            this.logger.error('Error during setup', error);
+            throw error;
         }
     }
 
@@ -147,8 +166,10 @@ export class SASWebviewPanel {
         }
     }
 
+    /**
+     * Handles data loading requests from the webview
+     */
     private async handleLoadData(data: any): Promise<void> {
-
         const request: SASDataRequest = {
             filePath: this.document.uri.fsPath,
             startRow: data.startRow || 0,
@@ -158,6 +179,12 @@ export class SASWebviewPanel {
                          this.document.metadata?.variables.map(v => v.name) || [],
             whereClause: data.whereClause || this.filterState.whereClause || ''
         };
+
+        this.logger.debug('Handling load data request', {
+            startRow: request.startRow,
+            numRows: request.numRows,
+            varsCount: request.selectedVars?.length
+        });
 
         try {
             const result = await this.document.getData(request);
@@ -170,11 +197,11 @@ export class SASWebviewPanel {
                 totalRows: result.total_rows,
                 columns: result.columns
             };
-            
+
             await this.panel.webview.postMessage(response);
         } catch (error) {
-            console.error('Error loading data:', error);
-            
+            this.logger.error('Error loading data', error);
+
             await this.panel.webview.postMessage({
                 type: 'error',
                 message: `Failed to load data: ${error}`
@@ -226,13 +253,19 @@ export class SASWebviewPanel {
         await this.loadInitialData();
     }
 
+    /**
+     * Handles filter application for pagination mode
+     */
     private async handleApplyFilterPagination(data: any): Promise<void> {
         const whereClause = data.whereClause || '';
         this.filterState.whereClause = whereClause;
 
+        this.logger.debug('Applying filter', { whereClause: whereClause.substring(0, 100) });
+
         try {
             if (whereClause.trim() === '') {
                 // Clearing filter - return to full dataset
+                this.logger.debug('Clearing filter - returning to full dataset');
                 await this.panel.webview.postMessage({
                     type: 'filterResult',
                     filteredRows: this.document.metadata?.total_rows || 0,
@@ -252,8 +285,8 @@ export class SASWebviewPanel {
 
             const result = await this.document.getData(countRequest);
             const filteredRowCount = result.filtered_rows || result.total_rows || 0;
-            
-            console.log('Filter result: ' + filteredRowCount + ' rows match the filter');
+
+            this.logger.info(`Filter applied: ${filteredRowCount} rows match the filter`);
 
             // Send filter result back to webview
             await this.panel.webview.postMessage({
@@ -263,7 +296,7 @@ export class SASWebviewPanel {
             });
 
         } catch (error) {
-            console.error('Filter error:', error);
+            this.logger.error('Filter error', error);
             await this.panel.webview.postMessage({
                 type: 'error',
                 message: `Failed to apply filter: ${error}`
@@ -271,9 +304,12 @@ export class SASWebviewPanel {
         }
     }
 
+    /**
+     * Legacy filter handler (deprecated - client-side filtering)
+     */
     private async handleApplyFilter(data: any): Promise<void> {
         // Client-side filtering now, no need for this
-        console.log('SASWebviewPanel: Filter applied client-side');
+        this.logger.debug('Legacy filter method called - client-side filtering used instead');
     }
 
     private async postMessage(message: WebviewMessage): Promise<void> {
@@ -338,646 +374,11 @@ export class SASWebviewPanel {
     }
 
     // Removed unused methods - data loading handled by pagination component
-
-    private updateWebviewWithDataOld(metadata: any, data: any): void {
-        // Old implementation kept for reference - not used anymore
-        const fileName = metadata.file_path.split(/[\\/]/).pop();
-        const variableList = metadata.variables.map((variable: any, index: number) => {
-            const icon = this.getVariableIcon(variable);
-            const varName = this.escapeHtml(variable.name);
-            const varLabel = variable.label ? this.escapeHtml(variable.label) : '';
-            const tooltipText = this.escapeHtml(this.getVariableTooltipText(variable));
-            return `
-                <div class="variable-item">
-                    <input type="checkbox" checked id="var-${index}" data-column-index="${index}" class="column-toggle">
-                    <span class="variable-text show-both" title="${tooltipText}">${icon} ${varName}${varLabel && varLabel !== varName ? ` (${varLabel})` : ''}</span>
-                </div>`;
-        }).join('');
-
-        this.panel.webview.html = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'unsafe-eval';">
-            <style>
-                body { font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-foreground); margin: 0; padding: 10px; }
-                .header {
-                    display: grid;
-                    grid-template-columns: minmax(250px, 1fr) minmax(300px, 1fr) minmax(200px, 1fr);
-                    gap: 20px;
-                    padding: 15px 20px;
-                    background: var(--vscode-sideBar-background);
-                    border-radius: 6px;
-                    border: 1px solid var(--vscode-panel-border);
-                    margin-bottom: 15px;
-                    align-items: center;
-                }
-                @media (max-width: 1200px) {
-                    .header {
-                        grid-template-columns: 1fr;
-                        gap: 15px;
-                    }
-                    .header-section.center,
-                    .header-section.right {
-                        align-items: flex-start;
-                    }
-                }
-                .header-section { display: flex; flex-direction: column; }
-                .header-section.center { align-items: center; }
-                .header-section.right { align-items: flex-end; }
-                .dataset-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--vscode-foreground); }
-                .dataset-label { color: var(--vscode-descriptionForeground); font-size: 12px; margin: 2px 0 0 0; }
-                .stats { color: var(--vscode-descriptionForeground); font-size: 11px; margin: 2px 0 0 0; }
-                .filter-section { display: flex; flex-direction: column; gap: 8px; }
-                .filter-input { display: flex; gap: 5px; align-items: center; }
-                .where-input { flex: 1; padding: 8px 12px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 13px; min-width: 300px; }
-                .btn { padding: 6px 12px; border: 1px solid var(--vscode-button-border); background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-radius: 3px; cursor: pointer; font-size: 11px; }
-                .btn:hover { background: var(--vscode-button-hoverBackground); }
-                .btn-secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
-                .btn-secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
-                .controls-section { display: flex; flex-direction: column; gap: 10px; }
-                .control-group { display: flex; align-items: center; gap: 8px; }
-                .control-label { font-size: 11px; color: var(--vscode-descriptionForeground); min-width: 50px; }
-                select { padding: 4px 6px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 11px; }
-                .content { display: flex; gap: 15px; height: calc(100vh - 180px); }
-                .sidebar {
-                    min-width: 250px;
-                    max-width: min(450px, 35vw);
-                    width: min(320px, 25vw);
-                    display: flex;
-                    flex-direction: column;
-                    transition: width 0.3s ease;
-                    flex-shrink: 0;
-                }
-                .sidebar.compact { width: min(280px, 22vw); }
-                .sidebar.expanded { width: min(400px, 35vw); }
-                .data-area {
-                    flex: 1;
-                    display: flex;
-                    flex-direction: column;
-                    min-width: 0;
-                    overflow: hidden;
-                }
-                .variables-container { flex: 1; overflow-y: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 10px; background: var(--vscode-sideBar-background); }
-                table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid var(--vscode-panel-border); padding: 6px 8px; text-align: left; font-size: 12px; }
-                th { background: var(--vscode-editor-background); font-weight: 600; position: sticky; top: 0; z-index: 10; }
-                .variable-item {
-                    padding: 6px 0;
-                    border-bottom: 1px solid var(--vscode-panel-border);
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                .variable-item:last-child { border-bottom: none; }
-                .variable-item input { margin: 0; flex-shrink: 0; }
-                .variable-text {
-                    flex: 1;
-                    font-size: 11px;
-                    overflow: hidden;
-                    white-space: nowrap;
-                    text-overflow: ellipsis;
-                    min-width: 0;
-                }
-                .variable-text.show-both {
-                    white-space: normal;
-                    line-height: 1.3;
-                }
-                h3 { margin: 0 0 10px 0; font-size: 13px; font-weight: 600; }
-                .section-title { font-size: 11px; font-weight: 600; color: var(--vscode-descriptionForeground); text-transform: uppercase; margin-bottom: 8px; }
-            </style>
-            <title>SAS Dataset Viewer</title>
-        </head>
-        <body>
-            <div class="header">
-                <!-- Dataset Info Section -->
-                <div class="header-section">
-                    <div class="dataset-title">${fileName.replace('.sas7bdat', '')}</div>
-                    ${metadata.dataset_label ? `<div class="dataset-label">${metadata.dataset_label}</div>` : ''}
-                    <div class="stats">${data.total_rows.toLocaleString()} observations • ${metadata.total_variables} variables</div>
-                </div>
-
-                <!-- Filter Section -->
-                <div class="header-section center">
-                    <div class="section-title">Filtering</div>
-                    <div class="filter-section">
-                        <div class="filter-input">
-                            <input type="text" class="where-input" placeholder="visitnum = 2 or age > 60" id="where-clause">
-                        </div>
-                        <div class="filter-input">
-                            <button class="btn" id="apply-filter-btn">Apply</button>
-                            <button class="btn btn-secondary" id="clear-filter-btn">Clear</button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Controls Section -->
-                <div class="header-section right">
-                    <div class="section-title">Display Options</div>
-                    <div class="controls-section">
-                        <div class="control-group">
-                            <label class="control-label">Show:</label>
-                            <select id="variable-display-mode" onchange="updateVariableDisplay()">
-                                <option value="name">Names</option>
-                                <option value="label">Labels</option>
-                                <option value="both" selected>Both</option>
-                            </select>
-                        </div>
-                        <button class="btn" onclick="showVariableMetadata()">Variable Details</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="content">
-                <div class="sidebar">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                        <h3>Variables</h3>
-                        <div id="selected-count" style="font-size: 11px; color: var(--vscode-descriptionForeground);">
-                            ${metadata.total_variables} selected
-                        </div>
-                    </div>
-                    <div style="margin-bottom: 15px;">
-                        <button class="btn" id="select-all-btn" style="margin-right: 8px;">Select All</button>
-                        <button class="btn btn-secondary" id="deselect-all-btn">Deselect All</button>
-                    </div>
-
-                    <div class="variables-container">
-                        ${variableList}
-                    </div>
-                </div>
-
-                <div class="data-area">
-                    <div class="data-stats" id="data-stats" style="margin-bottom: 10px; font-size: 12px; color: var(--vscode-descriptionForeground);">
-                        Showing ${data.returned_rows.toLocaleString()} rows
-                    </div>
-                    <div style="flex: 1; overflow: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px; width: 100%;">
-                        <table id="data-table" style="min-width: max-content; width: auto;">
-                            <thead id="table-header">
-                                <tr></tr>
-                            </thead>
-                            <tbody id="table-body">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <script>
-                // Data will be sent via postMessage to avoid embedding large datasets
-                let allData = [];
-                let columns = [];
-                let metadata = {};
-                let filteredData = [];
-                let selectedColumns = [];
-
-                // Wait for data from extension
-                window.addEventListener('message', event => {
-                    const message = event.data;
-                    if (message.type === 'initialData') {
-                        allData = message.data;
-                        columns = message.columns;
-                        metadata = message.metadata;
-                        filteredData = allData;
-                        selectedColumns = [...columns];
-
-                        // Initialize the table
-                        renderTable();
-                        updateStats();
-
-                        // Set up event listeners for checkboxes
-                        setupCheckboxListeners();
-                    }
-                });
-
-                function setupCheckboxListeners() {
-                    // Setup checkbox listeners
-                    document.querySelectorAll('.column-toggle').forEach(checkbox => {
-                        checkbox.addEventListener('change', function(e) {
-                            const index = parseInt(this.dataset.columnIndex);
-                            const columnName = columns[index];
-                            toggleColumn(columnName, this.checked);
-                        });
-                    });
-
-                    // Setup button listeners
-                    document.getElementById('select-all-btn').addEventListener('click', selectAll);
-                    document.getElementById('deselect-all-btn').addEventListener('click', deselectAll);
-                    document.getElementById('apply-filter-btn').addEventListener('click', applyFilter);
-                    document.getElementById('clear-filter-btn').addEventListener('click', clearFilter);
-
-                    // Setup enter key on where clause input
-                    document.getElementById('where-clause').addEventListener('keypress', function(e) {
-                        if (e.key === 'Enter') applyFilter();
-                    });
-                }
-
-                function toggleColumn(columnName, isVisible) {
-                    if (isVisible && !selectedColumns.includes(columnName)) {
-                        selectedColumns.push(columnName);
-                    } else if (!isVisible) {
-                        selectedColumns = selectedColumns.filter(col => col !== columnName);
-                    }
-                    renderTable();
-                    updateSelectedCount();
-                }
-
-                function selectAll() {
-                    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => { cb.checked = true; });
-                    selectedColumns = [...columns];
-                    renderTable();
-                    updateSelectedCount();
-                }
-
-                function deselectAll() {
-                    const checkboxes = document.querySelectorAll('input[type="checkbox"]');
-                    checkboxes.forEach(cb => { cb.checked = false; });
-                    selectedColumns = [];
-                    renderTable();
-                    updateSelectedCount();
-                }
-
-                function updateSelectedCount() {
-                    const checkedCount = document.querySelectorAll('input[type="checkbox"]:checked').length;
-                    const selectedCountEl = document.getElementById('selected-count');
-                    if (selectedCountEl) {
-                        selectedCountEl.textContent = 'Selected variables: ' + checkedCount;
-                    }
-                }
-
-                function applyFilter() {
-                    const whereInput = document.getElementById('where-clause');
-                    const whereClause = whereInput ? whereInput.value.trim() : '';
-
-                    console.log('Applying filter:', whereClause);
-
-                    if (!whereClause) {
-                        filteredData = allData;
-                        console.log('No filter, showing all', allData.length, 'rows');
-                    } else {
-                        try {
-                            filteredData = allData.filter(row => {
-                                return evaluateWhereClause(row, whereClause);
-                            });
-                            console.log('Filtered to', filteredData.length, 'rows');
-                        } catch (error) {
-                            console.error('Filter error:', error);
-                            alert('Invalid WHERE clause: ' + error.message);
-                            return;
-                        }
-                    }
-
-                    renderTable();
-                    updateStats();
-                }
-
-                function clearFilter() {
-                    const whereInput = document.getElementById('where-clause');
-                    if (whereInput) {
-                        whereInput.value = '';
-                        applyFilter();
-                    }
-                }
-
-                function evaluateWhereClause(row, whereClause) {
-                    // Simple WHERE clause evaluation without eval()
-                    let expression = whereClause.trim();
-                    console.log('Original expression:', expression);
-
-                    // Handle simple cases first
-                    if (!expression) return true;
-
-                    // Replace SAS operators first
-                    expression = expression.replace(/\bAND\b/gi, ' && ');
-                    expression = expression.replace(/\bOR\b/gi, ' || ');
-                    expression = expression.replace(/\bEQ\b/gi, ' == ');
-                    expression = expression.replace(/\bNE\b/gi, ' != ');
-                    expression = expression.replace(/\bGT\b/gi, ' > ');
-                    expression = expression.replace(/\bLT\b/gi, ' < ');
-                    expression = expression.replace(/\bGE\b/gi, ' >= ');
-                    expression = expression.replace(/\bLE\b/gi, ' <= ');
-
-                    // Handle IN operator - convert to array includes check
-                    expression = expression.replace(/(\w+)\s+in\s+\((.*?)\)/gi, (match, column, values) => {
-                        // Parse the values list and keep them as-is (they'll be quoted strings)
-                        const valueList = values.split(',').map(v => v.trim());
-                        // Build an array.includes() check
-                        return '[' + valueList.join(',') + '].includes(' + column + ')';
-                    });
-
-                    console.log('After operator replacement:', expression);
-
-                    // Simple parsing for basic conditions
-                    // This handles: column operator value
-                    const parts = expression.split(/(\s*(?:&&|\|\||==|!=|>=|<=|>|<|=)\s*)/);
-
-                    if (parts.length === 3) {
-                        // Simple condition: column operator value
-                        const columnNameInput = parts[0].trim();
-                        const operator = parts[1].trim();
-                        let expectedValue = parts[2].trim();
-
-                        // Find the actual column name (case-insensitive)
-                        const columnName = columns.find(col =>
-                            col.toLowerCase() === columnNameInput.toLowerCase()
-                        );
-
-                        if (!columnName) {
-                            console.warn('Column not found:', columnNameInput);
-                            return false;
-                        }
-
-                        // Remove quotes from string values
-                        if ((expectedValue.startsWith("'") && expectedValue.endsWith("'")) ||
-                            (expectedValue.startsWith('"') && expectedValue.endsWith('"'))) {
-                            expectedValue = expectedValue.slice(1, -1);
-                        }
-
-                        const actualValue = row[columnName];
-                        console.log('Comparing:', actualValue, operator, expectedValue);
-
-                        // Convert expectedValue to same type as actualValue
-                        let compareValue = expectedValue;
-                        if (typeof actualValue === 'number' && !isNaN(Number(expectedValue))) {
-                            compareValue = Number(expectedValue);
-                        }
-
-                        switch (operator.replace(/\s/g, '')) {
-                            case '=':
-                            case '==':
-                                return actualValue == compareValue;
-                            case '!=':
-                                return actualValue != compareValue;
-                            case '>':
-                                return actualValue > compareValue;
-                            case '<':
-                                return actualValue < compareValue;
-                            case '>=':
-                                return actualValue >= compareValue;
-                            case '<=':
-                                return actualValue <= compareValue;
-                            default:
-                                console.warn('Unknown operator:', operator);
-                                return false;
-                        }
-                    }
-
-                    // For complex expressions, fall back to eval with proper variable substitution
-                    try {
-                        let evalExpression = expression;
-                        const sortedColumns = [...columns].sort((a, b) => b.length - a.length);
-
-                        sortedColumns.forEach(col => {
-                            const value = row[col];
-                            // Case-insensitive replacement
-                            const regex = new RegExp('\\\\b' + col + '\\\\b', 'gi');
-                            if (typeof value === 'string') {
-                                const escapedValue = value.replace(/'/g, "\\\\'").replace(/"/g, '\\\\"');
-                                evalExpression = evalExpression.replace(regex, "'" + escapedValue + "'");
-                            } else if (value === null || value === undefined) {
-                                evalExpression = evalExpression.replace(regex, 'null');
-                            } else {
-                                evalExpression = evalExpression.replace(regex, String(value));
-                            }
-                        });
-
-                        // Convert single = to == for JavaScript evaluation
-                        evalExpression = evalExpression.replace(/([^!<>=])=([^=])/g, '$1==$2');
-
-                        // Handle IN operator - convert to array includes check (after variable substitution)
-                        evalExpression = evalExpression.replace(/('(?:[^'\\]|\\.)*')\s+in\s+\((.*?)\)/gi, (match, value, list) => {
-                            return '[' + list + '].includes(' + value + ')';
-                        });
-
-                        console.log('Eval expression:', evalExpression);
-                        return eval(evalExpression);
-                    } catch (error) {
-                        console.error('Evaluation error:', error);
-                        return false; // Don't throw, just exclude the row
-                    }
-                }
-
-                function getVariableTypeIcon(variableName) {
-                    const variable = metadata.variables.find(v => v.name === variableName);
-                    if (!variable) return '';
-
-                    // Check for date/time formats first
-                    if (variable.format) {
-                        const format = variable.format.toUpperCase();
-                        if (format.includes('DATE')) return '📅'; // Calendar for dates
-                        if (format.includes('TIME')) return '🕐'; // Clock for times
-                        if (format.includes('DATETIME')) return '🕐'; // Clock for datetime
-                        if (format.includes('DOLLAR') || format.includes('CURRENCY')) return '💰'; // Money for currency
-                        if (format.includes('PERCENT')) return '%'; // Percent symbol
-                    }
-
-                    // Check variable name patterns for date/time
-                    const nameUpper = variableName.toUpperCase();
-                    if (nameUpper.includes('DATE') || nameUpper.includes('DT')) return '📅';
-                    if (nameUpper.includes('TIME') || nameUpper.includes('TM')) return '🕐';
-
-                    // Standard type icons
-                    if (variable.type === 'character') return '📝'; // Text document for character
-                    if (variable.type === 'numeric') return '#'; // Hash symbol for numeric
-
-                    return '?'; // Unknown type
-                }
-
-                function getVariableTooltip(variableName) {
-                    const variable = metadata.variables.find(v => v.name === variableName);
-                    if (!variable) return variableName;
-
-                    let tooltip = variable.name + ' (' + variable.type + ')';
-                    if (variable.label) tooltip += '\\n' + variable.label;
-                    if (variable.format) tooltip += '\\nFormat: ' + variable.format;
-
-                    return tooltip;
-                }
-
-                function renderTable() {
-                    const headerRow = document.querySelector('#table-header tr');
-                    const tbody = document.getElementById('table-body');
-
-                    // Clear existing content
-                    headerRow.innerHTML = '';
-                    tbody.innerHTML = '';
-
-                    // Render header with type icons
-                    selectedColumns.forEach(col => {
-                        const th = document.createElement('th');
-                        const variable = metadata.variables.find(v => v.name === col);
-                        if (variable) {
-                            th.innerHTML = getVariableDisplayText(variable);
-                        } else {
-                            const icon = getVariableTypeIcon(col);
-                            th.innerHTML = icon + ' ' + col;
-                        }
-                        th.title = getVariableTooltip(col); // Add tooltip with more info
-                        headerRow.appendChild(th);
-                    });
-
-                    // Render rows
-                    filteredData.forEach(row => {
-                        const tr = document.createElement('tr');
-                        selectedColumns.forEach(col => {
-                            const td = document.createElement('td');
-                            const value = row[col];
-                            td.textContent = value === null || value === undefined ? '' : String(value);
-                            if (typeof value === 'number') {
-                                td.style.textAlign = 'right';
-                            }
-                            tr.appendChild(td);
-                        });
-                        tbody.appendChild(tr);
-                    });
-                }
-
-                function updateStats() {
-                    const statsEl = document.getElementById('stats');
-                    const dataStatsEl = document.getElementById('data-stats');
-
-                    if (filteredData.length === allData.length) {
-                        statsEl.textContent = allData.length + ' observations, ' + metadata.total_variables + ' variables';
-                    } else {
-                        statsEl.textContent = filteredData.length + ' of ' + allData.length + ' observations (filtered), ' + metadata.total_variables + ' variables';
-                    }
-
-                    dataStatsEl.textContent = 'Showing ' + filteredData.length + ' rows';
-                }
-
-                function getVariableDisplayText(variable) {
-                    const mode = document.getElementById('variable-display-mode').value;
-                    const icon = getVariableTypeIcon(variable.name);
-
-                    switch (mode) {
-                        case 'name':
-                            return icon + ' ' + variable.name;
-                        case 'label':
-                            return icon + ' ' + (variable.label || variable.name);
-                        case 'both':
-                        default:
-                            if (variable.label && variable.label !== variable.name) {
-                                return icon + ' ' + variable.name + ' (' + variable.label + ')';
-                            } else {
-                                return icon + ' ' + variable.name;
-                            }
-                    }
-                }
-
-                function updateVariableDisplay() {
-                    const displayMode = document.getElementById('variable-display-mode').value;
-                    const sidebar = document.querySelector('.sidebar');
-
-                    // Adjust sidebar width based on display mode
-                    if (displayMode === 'name') {
-                        sidebar.className = 'sidebar compact';
-                    } else if (displayMode === 'both') {
-                        sidebar.className = 'sidebar expanded';
-                    } else {
-                        sidebar.className = 'sidebar';
-                    }
-
-                    // Update sidebar variable list
-                    const variablesList = document.querySelector('.variables-container');
-                    variablesList.innerHTML = '';
-
-                    metadata.variables.forEach((variable, index) => {
-                        const item = document.createElement('div');
-                        item.className = 'variable-item';
-
-                        const checkbox = document.createElement('input');
-                        checkbox.type = 'checkbox';
-                        checkbox.id = 'var-' + index;
-                        checkbox.checked = selectedColumns.includes(variable.name);
-                        checkbox.addEventListener('change', (e) => {
-                            toggleColumn(variable.name, e.target.checked);
-                        });
-
-                        const textElement = document.createElement('span');
-                        textElement.className = displayMode === 'both' ? 'variable-text show-both' : 'variable-text';
-                        textElement.innerHTML = getVariableDisplayText(variable);
-                        textElement.title = getVariableTooltip(variable.name);
-
-                        item.appendChild(checkbox);
-                        item.appendChild(textElement);
-                        variablesList.appendChild(item);
-                    });
-
-                    // Update table headers
-                    renderTable();
-                }
-
-                function showVariableMetadata() {
-                    let metadataHTML = '<div style="max-height: 400px; overflow-y: auto;"><table style="width: 100%; border-collapse: collapse; font-size: 11px;">';
-                    metadataHTML += '<tr style="background: var(--vscode-editor-background); font-weight: bold;"><th style="border: 1px solid var(--vscode-panel-border); padding: 4px;">Name</th><th style="border: 1px solid var(--vscode-panel-border); padding: 4px;">Type</th><th style="border: 1px solid var(--vscode-panel-border); padding: 4px;">Label</th><th style="border: 1px solid var(--vscode-panel-border); padding: 4px;">Format</th><th style="border: 1px solid var(--vscode-panel-border); padding: 4px;">Length</th></tr>';
-
-                    metadata.variables.forEach(variable => {
-                        metadataHTML += '<tr>';
-                        metadataHTML += '<td style="border: 1px solid var(--vscode-panel-border); padding: 4px;">' + getVariableTypeIcon(variable.name) + ' ' + variable.name + '</td>';
-                        metadataHTML += '<td style="border: 1px solid var(--vscode-panel-border); padding: 4px;">' + variable.type + '</td>';
-                        metadataHTML += '<td style="border: 1px solid var(--vscode-panel-border); padding: 4px;">' + (variable.label || '') + '</td>';
-                        metadataHTML += '<td style="border: 1px solid var(--vscode-panel-border); padding: 4px;">' + (variable.format || '') + '</td>';
-                        metadataHTML += '<td style="border: 1px solid var(--vscode-panel-border); padding: 4px;">' + (variable.length || '') + '</td>';
-                        metadataHTML += '</tr>';
-                    });
-
-                    metadataHTML += '</table></div>';
-
-                    // Create a modal-like overlay
-                    const overlay = document.createElement('div');
-                    overlay.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center;';
-
-                    const modal = document.createElement('div');
-                    modal.style.cssText = 'background: var(--vscode-editor-background); border: 1px solid var(--vscode-panel-border); padding: 20px; border-radius: 4px; max-width: 80%; max-height: 80%;';
-
-                    modal.innerHTML = '<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;"><h3 style="margin: 0;">Variable Metadata</h3><button onclick="document.body.removeChild(document.body.lastElementChild)" style="padding: 4px 12px;">Close</button></div>' + metadataHTML;
-
-                    overlay.appendChild(modal);
-                    document.body.appendChild(overlay);
-
-                    // Close on overlay click
-                    overlay.addEventListener('click', (e) => {
-                        if (e.target === overlay) {
-                            overlay.remove();
-                        }
-                    });
-                }
-            </script>
-        </body>
-        </html>`;
-
-        // Send data via postMessage after HTML is loaded
-        setTimeout(() => {
-            this.panel.webview.postMessage({
-                type: 'initialData',
-                data: data.data,
-                columns: data.columns,
-                metadata: metadata
-            });
-        }, 100);
-    }
-
-    private getWebviewContent(): string {
-        return `<!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <title>SAS Dataset Viewer</title>
-            <style>
-                body { font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-foreground); padding: 20px; text-align: center; }
-            </style>
-        </head>
-        <body>
-            <h2>Loading SAS Dataset...</h2>
-            <p>Please wait while we load your data.</p>
-        </body>
-        </html>`;
-    }
-
+    /**
+     * Dispose of the webview panel and clean up resources
+     */
     public dispose(): void {
-        console.log('SASWebviewPanel: Disposing');
+        this.logger.debug('Disposing webview panel');
         this.disposed = true;
     }
 }

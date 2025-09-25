@@ -1,8 +1,17 @@
 import * as vscode from 'vscode';
 import { SASDatasetProvider } from './SasDataProvider';
 import { SASWebviewPanel } from './WebviewPanel';
+import { Logger } from './utils/logger';
 
+/**
+ * Activates the SAS Dataset Viewer extension
+ * @param context - The VS Code extension context
+ */
 export function activate(context: vscode.ExtensionContext) {
+    // Initialize logging
+    Logger.initialize('SAS Dataset Viewer');
+    Logger.info('Extension activating...');
+
     const provider = new SASDatasetProvider(context);
 
     // Register custom editor provider
@@ -36,7 +45,19 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // Add disposables to context for proper cleanup
     context.subscriptions.push(disposable, openCommand);
+
+    // Ensure logger is disposed when extension deactivates
+    context.subscriptions.push({ dispose: () => Logger.dispose() });
+
+    Logger.info('Extension activated successfully');
 }
 
-export function deactivate() {}
+/**
+ * Deactivates the extension and cleans up resources
+ */
+export function deactivate() {
+    Logger.info('Extension deactivating...');
+    Logger.dispose();
+}
