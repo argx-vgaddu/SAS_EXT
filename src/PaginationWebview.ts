@@ -663,9 +663,9 @@ export function getPaginationHTML(metadata: any): string {
                 <div class="filter-section">
                     <div style="display: flex; align-items: center; flex: 1; gap: 10px;">
                         <label for="where-input">WHERE:</label>
-                        <input type="text" id="where-input" class="where-input" 
-                               placeholder="e.g., AGE > 30 and COUNTRY = 'USA'" 
-                               title="Filter the dataset using SAS-style WHERE conditions">
+                        <input type="text" id="where-input" class="where-input"
+                               placeholder="e.g., age > 30 AND country = 'USA' (case-insensitive)"
+                               title="Filter using WHERE conditions. Variable names are case-insensitive. Supports AND/OR or &/| operators">
                         <button class="btn" id="apply-filter-btn">Apply Filter</button>
                         <button class="btn" id="clear-filter-btn">Clear</button>
                     </div>

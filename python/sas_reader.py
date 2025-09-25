@@ -96,11 +96,23 @@ class SASReader:
 
         try:
             original_clause = where_clause.strip()
-            # Debug prints removed for performance
-            
-            # Use pandas query method which is more robust
-            # First normalize the clause for pandas query syntax
+
+            # Create case-insensitive column name mapping
+            column_mapping = {}
+            for col in self.column_names:
+                column_mapping[col.upper()] = col
+
+            # Replace column names with actual case-sensitive names
             query_clause = original_clause
+
+            # Sort by length (descending) to replace longer names first
+            # This prevents partial replacements (e.g., "NAME" in "FIRSTNAME")
+            for upper_col in sorted(column_mapping.keys(), key=len, reverse=True):
+                actual_col = column_mapping[upper_col]
+                # Use word boundaries to match whole column names
+                import re
+                pattern = r'\b' + re.escape(upper_col) + r'\b'
+                query_clause = re.sub(pattern, actual_col, query_clause, flags=re.IGNORECASE)
             
             # Replace SAS operators with pandas query equivalents
             query_clause = re.sub(r'\bEQ\b', '==', query_clause, flags=re.IGNORECASE)
@@ -109,8 +121,13 @@ class SASReader:
             query_clause = re.sub(r'\bLT\b', '<', query_clause, flags=re.IGNORECASE)
             query_clause = re.sub(r'\bGE\b', '>=', query_clause, flags=re.IGNORECASE)
             query_clause = re.sub(r'\bLE\b', '<=', query_clause, flags=re.IGNORECASE)
+
+            # Support both AND/OR keywords and &/| symbols
             query_clause = re.sub(r'\bAND\b', ' and ', query_clause, flags=re.IGNORECASE)
             query_clause = re.sub(r'\bOR\b', ' or ', query_clause, flags=re.IGNORECASE)
+            # Also handle & and | symbols (with proper spacing)
+            query_clause = re.sub(r'\s*&\s*', ' and ', query_clause)
+            query_clause = re.sub(r'\s*\|\s*', ' or ', query_clause)
             
             # Handle single = to ==
             query_clause = re.sub(r'([^!<>=])\s*=\s*([^=])', r'\1 == \2', query_clause)
@@ -123,11 +140,33 @@ class SASReader:
             return condition
 
         except Exception as e:
+            # Try to provide more helpful error messages
+            error_msg = str(e)
+
+            # Check for common issues
+            if "not in index" in error_msg.lower():
+                # Extract the problematic column name if possible
+                import re
+                match = re.search(r"'([^']+)'", error_msg)
+                if match:
+                    bad_col = match.group(1)
+                    available_cols = ', '.join(self.column_names[:5])
+                    if len(self.column_names) > 5:
+                        available_cols += f', ... ({len(self.column_names)} total)'
+                    error_msg = f"Column '{bad_col}' not found. Available columns: {available_cols}"
+                else:
+                    error_msg = f"Invalid column name in WHERE clause. Available columns: {', '.join(self.column_names[:10])}"
+            elif "invalid syntax" in error_msg.lower():
+                error_msg = f"Syntax error in WHERE clause. Please check your operators and quotes. Example: AGE > 30 and GENDER = 'M'"
+            elif "cannot compare" in error_msg.lower():
+                error_msg = "Type mismatch in comparison. Make sure to use quotes for string values and no quotes for numbers."
+
             # Fallback: try simple column-based filtering for basic cases
             try:
                 return self.parse_simple_condition(original_clause)
-            except:
-                raise ValueError(f"Invalid WHERE clause: {str(e)}")
+            except Exception as fallback_error:
+                # If both fail, provide comprehensive error message
+                raise ValueError(f"Invalid WHERE clause '{original_clause}': {error_msg}")
     
     def parse_simple_condition(self, where_clause: str) -> Optional[pd.Series]:
         """Fallback parser for simple conditions like COLUMN = 'VALUE'"""
