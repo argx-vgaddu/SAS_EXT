@@ -12,19 +12,43 @@ py -m pip install -r python/requirements.txt
 py -m pip install pandas pyreadstat numpy
 ```
 
+### Node.js Setup
+```bash
+# IMPORTANT: Node.js must be properly installed and available in system PATH
+# Download from: https://nodejs.org/
+# After installation, verify with:
+node --version
+npm --version
+
+# If Node.js is not in PATH, use full paths (example):
+# "C:\Program Files\nodejs\node.exe"
+# "C:\Program Files\nodejs\npm.cmd"
+```
+
 ### TypeScript Compilation
 ```bash
-# Full Node.js path required on Windows
-"C:\nodejs\node-v22.19.0-win-x64\node.exe" node_modules/typescript/lib/tsc.js -p .
+# Standard commands (requires Node.js in PATH)
+npm install          # Install dependencies
+npm run compile      # One-time compilation
+npm run watch        # Watch mode for development
 
-# Or use npm scripts with full path
-"C:\nodejs\node-v22.19.0-win-x64\npm.cmd" run compile      # One-time compilation
-"C:\nodejs\node-v22.19.0-win-x64\npm.cmd" run watch        # Watch mode for development
+# If Node.js is not in PATH, use full paths:
+"C:\Program Files\nodejs\npm.cmd" install
+"C:\Program Files\nodejs\npm.cmd" run compile
+```
 
-# Node.js installation path
-Node.js: C:\nodejs\node-v22.19.0-win-x64\node.exe
-NPM: C:\nodejs\node-v22.19.0-win-x64\npm.cmd
-NPX: C:\nodejs\node-v22.19.0-win-x64\npx.cmd
+### Extension Publishing
+```bash
+# Install VS Code Extension CLI
+npm install -g @vscode/vsce
+
+# Package the extension
+vsce package
+
+# Publish to marketplace
+vsce publish
+
+# See PUBLISHING_STEPS.md for detailed instructions
 ```
 
 ### Testing
