@@ -1,194 +1,261 @@
 # SAS Dataset Viewer - VS Code Extension
 
-A VS Code extension for viewing and filtering SAS7BDAT dataset files with an interactive interface.
+A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files with an interactive, paginated interface.
 
-## Features
+## ✨ Features
 
-- **Open SAS7BDAT files** directly in VS Code with a custom editor
-- **View data** with virtual scrolling for performance (loads 100 rows at a time)
-- **Variable selection** - select/deselect columns, reorder variables, search by name
-- **WHERE clause filtering** - use SAS-style WHERE conditions to filter data
-- **Metadata display** - view variable types, labels, formats, and dataset statistics
-- **Read-only viewing** - secure viewing without data modification
+### 📊 **Data Viewing**
+- **Paginated display** - Navigate through large datasets with 50/100/200/500 rows per page
+- **Professional interface** - Clean, responsive design with sidebar and main content area
+- **Dataset information** - Shows dataset label, row count, and variable statistics
 
-## Prerequisites
+### 🔍 **Advanced Filtering**
+- **WHERE clause filtering** - Use SAS-style conditions to filter the complete dataset
+- **Real-time filtering** - Apply filters to all rows, then paginate the filtered results
+- **Filter status** - Shows current filter and matching row count
 
-1. **Python 3.7+** with pip
-2. **Node.js** (for development only)
-3. **VS Code 1.74.0+**
+### 📋 **Variable Management**
+- **Variable selection** - Choose which columns to display using checkboxes
+- **Display modes** - Toggle between variable names, labels, or both
+- **Rich tooltips** - Hover over variables to see detailed metadata
+- **Variable types** - Visual indicators for character (C) and numeric (N) variables
+- **Smart icons** - Different icons for text 📝, numbers 🔢, dates 📅, currency 💰
 
-## Installation
+### 🎯 **User Experience**
+- **Reliable performance** - Handles datasets with thousands of rows efficiently
+- **Intuitive navigation** - First/Previous/Next/Last buttons plus direct page input
+- **Responsive design** - Works well with different screen sizes
+- **Error handling** - Clear error messages and graceful failure handling
 
-### 1. Install Python Dependencies
+## 🚀 Quick Start
 
-```bash
-cd C:\Python\SAS_EXT
-py -m pip install -r python/requirements.txt
-```
+### Prerequisites
+- **Python 3.7+** with pip
+- **VS Code 1.74.0+**
+- **Node.js** (for development only)
 
-This installs:
-- `pyreadstat` - for reading SAS7BDAT files
-- `pandas` - for data manipulation
-- `numpy` - for numerical operations
+### Installation
 
-### 2. Build the Extension
+1. **Install Python dependencies:**
+   ```bash
+   cd C:\Python\SAS_EXT
+   py -m pip install pandas pyreadstat
+   ```
 
-```bash
-# Install Node.js dependencies
-npm install
+2. **Build the extension:**
+   ```bash
+   npm install
+   npm run compile
+   ```
 
-# Compile TypeScript
-npm run compile
-```
+3. **Launch in VS Code:**
+   - Press `F5` to open Extension Development Host
+   - Or install as VSIX package
 
-### 3. Install in VS Code
-
-1. Open VS Code
-2. Press `Ctrl+Shift+P` to open command palette
-3. Type "Extensions: Install from VSIX"
-4. Navigate to the extension folder and select the .vsix file (if packaged)
-5. Or use "Developer: Reload Window" if developing
-
-## Usage
+## 📖 Usage Guide
 
 ### Opening SAS Files
 
-1. **Right-click** on a `.sas7bdat` file in VS Code Explorer
-2. Select **"Open With" > "SAS Dataset Viewer"**
+**Method 1 - File Explorer:**
+1. Right-click on a `.sas7bdat` file in VS Code Explorer
+2. Select **"Open With" → "SAS Dataset Viewer"**
 
-Or:
-
+**Method 2 - Command Palette:**
 1. Press `Ctrl+Shift+P`
-2. Type "SAS: Open Dataset" and select the command
-3. Choose your `.sas7bdat` file
+2. Type "SAS: Open Dataset"
+3. Select your `.sas7bdat` file
 
 ### Interface Overview
 
-The extension opens with three main areas:
+#### 🏠 **Header Section**
+- **Dataset info**: Filename, total rows, variable count
+- **Current view**: Shows which rows are currently displayed
 
-#### 1. Header Controls
-- **File information** - displays filename and dataset statistics
-- **WHERE clause input** - enter SAS-style filtering conditions
+#### 📋 **Left Sidebar**
+- **Dataset label**: Shows the dataset title (e.g., "BIG TEST DATASET")
+- **Variable list**: All variables with checkboxes for selection
+- **Display mode**: Toggle between Names/Labels/Both
+- **Selection controls**: Select All and Clear All buttons
+- **Variable details**: Hover for tooltips with metadata
 
-#### 2. Sidebar (Left Panel)
-- **Variable list** with checkboxes for selection
-- **Variable search** to filter the variable list
-- **Select All/Deselect All** buttons
-- **Drag and drop** variables to reorder columns
-- **Metadata panel** showing dataset information
+#### 📊 **Main Content Area**
+- **WHERE filter**: Enter SAS-style filter conditions
+- **Data table**: Shows selected variables for current page
+- **Pagination controls**: Navigate through pages of data
 
-#### 3. Data View (Right Panel)
-- **Data table** with virtual scrolling
-- **Row information** showing current view status
-- **Loading indicator** for data operations
+### Filtering Examples
 
-### Filtering Data
-
-#### WHERE Clause Examples
-
+#### WHERE Clause Syntax
 ```sas
-age > 30
-gender = 'M'
-age > 18 AND income < 50000
-status IN ('Active', 'Pending')
-name LIKE '%Smith%'
+# Numeric comparisons
+AGE > 30
+INCOME >= 50000
+VISITNUM = 1
+
+# String comparisons  
+COUNTRY = 'USA'
+STATUS = 'Active'
+
+# Combined conditions
+AGE > 30 AND COUNTRY = 'USA'
+INCOME < 50000 OR STATUS = 'Student'
 ```
 
-**Supported operators:**
-- Comparison: `=`, `!=`, `>`, `<`, `>=`, `<=`, `NE`, `EQ`, `GT`, `LT`, `GE`, `LE`
-- Logical: `AND`, `OR`
-- String operations: `LIKE`, `IN`
+#### Workflow
+1. **Enter filter**: Type `AGE > 30` in the WHERE field
+2. **Apply filter**: Click "Apply Filter" button
+3. **View results**: See "Filter: AGE > 30 (X,XXX rows match)"
+4. **Navigate**: Use pagination to browse filtered results
+5. **Clear filter**: Click "Clear" to return to full dataset
 
-#### Variable Selection
-- **Check/uncheck** variables in the sidebar to show/hide columns
-- **Drag variables** up/down to reorder columns
-- **Search variables** using the search box
-- Use **Select All/Deselect All** for bulk operations
+### Variable Selection
 
-### Performance Notes
+#### Selecting Columns
+1. **Individual selection**: Check/uncheck variables in sidebar
+2. **Bulk operations**: Use "Select All" or "Clear All" buttons
+3. **Display modes**: 
+   - **Names**: Shows variable names (e.g., "USUBJID")
+   - **Labels**: Shows descriptive labels (e.g., "Unique Subject Identifier")  
+   - **Both**: Shows both (e.g., "USUBJID (Unique Subject Identifier)")
 
-- Data loads **100 rows at a time** for optimal performance
-- **Virtual scrolling** automatically loads more data as you scroll
-- **Large datasets** are handled efficiently with pagination
-- **Filtering and variable selection** trigger new data requests
+#### Variable Information
+- **Hover tooltips**: Detailed metadata including type, format, length
+- **Type indicators**: C (Character) or N (Numeric) badges
+- **Format icons**: 💰 Currency, 📅 Dates, 📊 Percentages, etc.
 
-## Development
+## 🛠️ Technical Details
+
+### Architecture
+- **Frontend**: TypeScript + HTML/CSS webview interface
+- **Backend**: Python with pandas and pyreadstat for SAS file processing
+- **Communication**: VS Code webview messaging API
+
+### Performance
+- **Pagination**: Loads only 100 rows at a time by default
+- **Efficient filtering**: WHERE clauses applied at the pandas level
+- **Smart caching**: Reduces redundant data requests
+- **Memory management**: Handles large datasets without memory issues
+
+### File Support
+- **Format**: SAS7BDAT files (SAS version 7 and later)
+- **Size**: Tested with datasets up to 12,000+ rows
+- **Variables**: Supports both character and numeric variables
+- **Metadata**: Preserves variable labels, formats, and types
+
+## 🔧 Development
 
 ### Project Structure
-
 ```
 SAS_EXT/
-├── src/                    # TypeScript source code
-│   ├── extension.ts        # Main extension entry point
-│   ├── SasDataProvider.ts  # Data provider and document handling
-│   ├── WebviewPanel.ts     # Webview management and messaging
-│   └── types.ts           # TypeScript type definitions
-├── webview/               # Webview HTML/CSS/JS
-│   ├── index.html         # (Generated) HTML template
-│   ├── styles.css         # Webview styling
-│   └── script.js          # Frontend JavaScript
-├── python/                # Python backend
-│   ├── sas_reader.py      # SAS file reading and processing
-│   └── requirements.txt   # Python dependencies
-├── out/                   # Compiled JavaScript output
-└── package.json           # Extension manifest
+├── src/                      # TypeScript source
+│   ├── extension.ts          # Extension entry point
+│   ├── SasDataProvider.ts    # SAS file document provider
+│   ├── WebviewPanel.ts       # Main webview management
+│   ├── PaginationWebview.ts  # Pagination interface (current)
+│   ├── VirtualScrollingWebview*.ts # Legacy virtual scrolling
+│   └── types.ts              # Type definitions
+├── python/                   # Python backend
+│   └── sas_reader.py         # SAS file processing
+├── out/                      # Compiled JavaScript
+└── package.json              # Extension manifest
 ```
 
 ### Building
-
 ```bash
 # Install dependencies
 npm install
-py -m pip install -r python/requirements.txt
 
 # Compile TypeScript
 npm run compile
 
-# Or watch for changes
+# Watch for changes during development
 npm run watch
 ```
 
 ### Testing
-
 ```bash
 # Test Python backend
 py test_python.py
 
-# Test in VS Code
-F5 (in VS Code) to launch Extension Development Host
+# Test with sample data
+# Use files in C:\sas\Test_Ext\*.sas7bdat
+
+# Launch extension development
+# Press F5 in VS Code
 ```
 
-## Troubleshooting
+## 🐛 Troubleshooting
 
-### Python Issues
-- Ensure Python is in your system PATH
-- Verify all dependencies are installed: `py -m pip list`
-- Check Python version: `py --version` (3.7+ required)
+### Common Issues
 
-### Extension Issues
-- Reload VS Code window: `Ctrl+Shift+P` > "Developer: Reload Window"
-- Check VS Code developer console: `Help` > `Toggle Developer Tools`
-- Verify compiled files exist in `out/` directory
+**"Python not found" error:**
+- Ensure Python is installed and in system PATH
+- Try using full Python path: `C:\Python39\python.exe`
 
-### Data Loading Issues
-- Check file permissions on the .sas7bdat file
-- Verify the file isn't corrupted
-- Large files may take longer to load initially
+**"Module not found" error:**
+- Install required packages: `py -m pip install pandas pyreadstat`
+- Check virtual environment if using one
 
-## Known Limitations
+**"File not loading" error:**
+- Verify file permissions on .sas7bdat file
+- Check file isn't corrupted or locked by another application
+- Try with a smaller test file first
 
-1. **Read-only** - no data editing capabilities
-2. **WHERE clause parsing** is simplified (complex expressions may not work)
-3. **Large string values** may be truncated in display
-4. **Date/time formatting** uses default Python string representation
+**Interface not responding:**
+- Reload VS Code window: `Ctrl+Shift+P` → "Developer: Reload Window"
+- Check Developer Tools console for JavaScript errors
+- Verify all TypeScript files compiled successfully
 
-## Contributing
+### Performance Tips
 
-1. Fork the repository
-2. Create a feature branch
-3. Make changes and test thoroughly
-4. Submit a pull request
+**For large datasets:**
+- Use WHERE filters to reduce data before viewing
+- Select only needed variables to improve loading speed
+- Use smaller page sizes (50 rows) for faster navigation
 
-## License
+**For complex filters:**
+- Test simple conditions first (e.g., `AGE > 30`)
+- Use parentheses for complex logic: `(AGE > 30) AND (STATUS = 'Active')`
+- Check variable names match exactly (case sensitive)
+
+## 📝 Version History
+
+### v0.2.0 (Current)
+- ✅ **Pagination interface** - Reliable page-by-page navigation
+- ✅ **Enhanced filtering** - Robust WHERE clause parsing
+- ✅ **Variable selection** - Interactive column choosing
+- ✅ **Rich tooltips** - Comprehensive variable metadata
+- ✅ **Professional UI** - Sidebar layout with controls
+- ✅ **Performance improvements** - Handles large datasets efficiently
+
+### v0.1.0 (Legacy)
+- Virtual scrolling interface (deprecated due to reliability issues)
+- Basic data viewing and filtering
+
+## 🤝 Contributing
+
+1. **Fork** the repository
+2. **Create** a feature branch: `git checkout -b feature/amazing-feature`
+3. **Commit** changes: `git commit -m 'Add amazing feature'`
+4. **Push** to branch: `git push origin feature/amazing-feature`
+5. **Open** a Pull Request
+
+### Development Guidelines
+- Follow TypeScript best practices
+- Add comprehensive error handling
+- Test with various SAS file formats
+- Update documentation for new features
+
+## 📄 License
 
 MIT License - see LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- **pyreadstat** library for SAS file reading capabilities
+- **pandas** for efficient data manipulation
+- **VS Code Extension API** for the development framework
+
+---
+
+**Happy data exploring! 📊✨**

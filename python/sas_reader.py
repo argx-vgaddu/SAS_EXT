@@ -90,38 +90,110 @@ class SASReader:
         }
 
     def parse_where_condition(self, where_clause: str) -> Optional[pd.Series]:
-        """Parse and apply WHERE condition to dataframe"""
+        """Parse and apply WHERE condition to dataframe using pandas query"""
         if not where_clause or not where_clause.strip():
             return None
 
         try:
-            # Clean up the where clause
-            where_clause = where_clause.strip()
-
-            # Replace SAS operators with pandas equivalents
-            # Handle basic operators
-            where_clause = re.sub(r'\bEQ\b', '==', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bNE\b', '!=', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bGT\b', '>', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bLT\b', '<', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bGE\b', '>=', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bLE\b', '<=', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bAND\b', '&', where_clause, flags=re.IGNORECASE)
-            where_clause = re.sub(r'\bOR\b', '|', where_clause, flags=re.IGNORECASE)
-
-            # Handle string comparisons - wrap column references
-            # This is a simplified approach - in production you'd want more robust parsing
-            for col in self.column_names:
-                # Replace column names with df['column_name'] references
-                pattern = r'\b' + re.escape(col) + r'\b'
-                where_clause = re.sub(pattern, f"df['{col}']", where_clause)
-
-            # Evaluate the condition
-            condition = eval(where_clause)
+            original_clause = where_clause.strip()
+            print(f"DEBUG: Available columns: {self.column_names}", file=sys.stderr)
+            print(f"DEBUG: Original WHERE clause: '{original_clause}'", file=sys.stderr)
+            
+            # Use pandas query method which is more robust
+            # First normalize the clause for pandas query syntax
+            query_clause = original_clause
+            
+            # Replace SAS operators with pandas query equivalents
+            query_clause = re.sub(r'\bEQ\b', '==', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bNE\b', '!=', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bGT\b', '>', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bLT\b', '<', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bGE\b', '>=', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bLE\b', '<=', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bAND\b', ' and ', query_clause, flags=re.IGNORECASE)
+            query_clause = re.sub(r'\bOR\b', ' or ', query_clause, flags=re.IGNORECASE)
+            
+            # Handle single = to ==
+            query_clause = re.sub(r'([^!<>=])\s*=\s*([^=])', r'\1 == \2', query_clause)
+            
+            print(f"DEBUG: Query clause for pandas: '{query_clause}'", file=sys.stderr)
+            
+            # Use pandas query method instead of eval
+            filtered_df = self.df.query(query_clause)
+            
+            # Return the boolean mask
+            condition = self.df.index.isin(filtered_df.index)
+            print(f"DEBUG: Filter matched {condition.sum()} rows out of {len(self.df)}", file=sys.stderr)
+            
             return condition
 
         except Exception as e:
-            raise ValueError(f"Invalid WHERE clause: {str(e)}")
+            print(f"DEBUG: WHERE clause error: {str(e)}", file=sys.stderr)
+            print(f"DEBUG: Query clause that failed: '{query_clause}'", file=sys.stderr)
+            
+            # Fallback: try simple column-based filtering for basic cases
+            try:
+                return self.parse_simple_condition(original_clause)
+            except:
+                raise ValueError(f"Invalid WHERE clause: {str(e)}")
+    
+    def parse_simple_condition(self, where_clause: str) -> Optional[pd.Series]:
+        """Fallback parser for simple conditions like COLUMN = 'VALUE'"""
+        print(f"DEBUG: Trying simple condition parser for: '{where_clause}'", file=sys.stderr)
+        
+        # Handle simple equality: COLUMN = 'VALUE'
+        match = re.match(r'^\s*(\w+)\s*=\s*[\'"]([^\'"]*)[\'"]?\s*$', where_clause, re.IGNORECASE)
+        if match:
+            col_name, value = match.groups()
+            
+            # Find the actual column name (case insensitive)
+            actual_col = None
+            for col in self.column_names:
+                if col.upper() == col_name.upper():
+                    actual_col = col
+                    break
+            
+            if actual_col:
+                print(f"DEBUG: Simple condition - column '{actual_col}' == '{value}'", file=sys.stderr)
+                condition = self.df[actual_col] == value
+                print(f"DEBUG: Simple condition matched {condition.sum()} rows", file=sys.stderr)
+                return condition
+        
+        # Handle simple numeric comparison: COLUMN > VALUE
+        match = re.match(r'^\s*(\w+)\s*([><=!]+)\s*(\d+(?:\.\d+)?)\s*$', where_clause, re.IGNORECASE)
+        if match:
+            col_name, operator, value = match.groups()
+            
+            # Find the actual column name
+            actual_col = None
+            for col in self.column_names:
+                if col.upper() == col_name.upper():
+                    actual_col = col
+                    break
+            
+            if actual_col:
+                numeric_value = float(value)
+                print(f"DEBUG: Simple numeric condition - column '{actual_col}' {operator} {numeric_value}", file=sys.stderr)
+                
+                if operator == '>':
+                    condition = self.df[actual_col] > numeric_value
+                elif operator == '<':
+                    condition = self.df[actual_col] < numeric_value
+                elif operator == '>=':
+                    condition = self.df[actual_col] >= numeric_value
+                elif operator == '<=':
+                    condition = self.df[actual_col] <= numeric_value
+                elif operator in ['=', '==']:
+                    condition = self.df[actual_col] == numeric_value
+                elif operator in ['!=', '<>']:
+                    condition = self.df[actual_col] != numeric_value
+                else:
+                    raise ValueError(f"Unsupported operator: {operator}")
+                
+                print(f"DEBUG: Simple numeric condition matched {condition.sum()} rows", file=sys.stderr)
+                return condition
+        
+        raise ValueError(f"Could not parse simple condition: {where_clause}")
 
     def get_data(self, start_row: int = 0, num_rows: int = 100,
                  selected_vars: List[str] = None, where_clause: str = None) -> Dict[str, Any]:
@@ -151,10 +223,15 @@ class SASReader:
             # Apply pagination
             end_row = min(start_row + num_rows, len(working_df))
             page_df = working_df.iloc[start_row:end_row]
+            
+            # Debug: Print actual data extraction details
+            print(f"DEBUG: Extracting rows {start_row} to {end_row-1} from DataFrame with {len(working_df)} total rows", file=sys.stderr)
+            print(f"DEBUG: page_df shape: {page_df.shape}", file=sys.stderr)
 
             # Convert to JSON-serializable format
             data = []
-            for _, row in page_df.iterrows():
+            valid_row_count = 0
+            for idx, row in page_df.iterrows():
                 row_data = {}
                 for col in page_df.columns:
                     value = row[col]
@@ -173,8 +250,16 @@ class SASReader:
                             row_data[col] = value.item()
                         else:
                             row_data[col] = value
-                data.append(row_data)
+                
+                # Only append if row has at least some data
+                if any(v is not None and v != '' for v in row_data.values()):
+                    data.append(row_data)
+                    valid_row_count += 1
+                else:
+                    print(f"DEBUG: Skipping empty row at index {idx}", file=sys.stderr)
 
+            print(f"DEBUG: Processed {valid_row_count} valid rows out of {len(page_df)} requested rows", file=sys.stderr)
+            
             return {
                 "data": data,
                 "total_rows": len(self.df),

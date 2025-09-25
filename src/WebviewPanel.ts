@@ -2,11 +2,16 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { SASDatasetDocument } from './SasDataProvider';
 import { WebviewMessage, FilterState, SASDataRequest } from './types';
+import { getVirtualScrollingHTMLComplete } from './VirtualScrollingWebviewComplete';
+import { getVirtualScrollingHTML } from './VirtualScrollingWebview';
+import { getPaginationHTML } from './PaginationWebview';
 
 export class SASWebviewPanel {
     private filterState: FilterState;
     private disposed: boolean = false;
     private currentWhereClause: string = '';
+    private webviewReady: boolean = false;
+    private pendingInitialData: any = null;
 
     constructor(
         private readonly panel: vscode.WebviewPanel,
@@ -29,20 +34,14 @@ export class SASWebviewPanel {
 
             this.panel.webview.options = {
                 enableScripts: true,
-                localResourceRoots: [
-                    vscode.Uri.file(path.join(this.context.extensionPath, 'webview'))
-                ]
+                localResourceRoots: [] // Remove restriction for testing
             };
 
-            // Set HTML content first
-            this.panel.webview.html = this.getWebviewContent();
-            console.log('SASWebviewPanel: HTML content set');
+            // CRITICAL FIX: Set up message handler BEFORE setting HTML (already done in constructor)
+            console.log('SASWebviewPanel: Message handler already set up in constructor');
 
-            // Wait a bit for webview to be ready, then send data directly in HTML
-            setTimeout(async () => {
-                if (this.disposed) return;
-                await this.loadDataDirectly();
-            }, 500);
+            // Wait a bit for webview to be ready
+            await this.loadDataDirectly();
 
         } catch (error) {
             console.error('SASWebviewPanel: Error during initialization:', error);
@@ -59,20 +58,81 @@ export class SASWebviewPanel {
                 return;
             }
 
-            // Get ALL data at once for fast client-side filtering
-            const request: SASDataRequest = {
-                filePath: this.document.uri.fsPath,
-                startRow: 0,
-                numRows: 10000, // Load more data at once
-                selectedVars: this.document.metadata.variables.map(v => v.name),
-                whereClause: '' // No server-side filtering
-            };
+            const totalRows = this.document.metadata.total_rows;
+            const useVirtualScrolling = true; // Always use virtual scrolling for consistent behavior
 
-            const data = await this.document.getData(request);
-            console.log('SASWebviewPanel: Data loaded:', data);
+            if (useVirtualScrolling) {
+                console.log(`SASWebviewPanel: Using virtual scrolling for dataset with ${totalRows} rows`);
 
-            // Update the HTML directly with the data
-            this.updateWebviewWithData(this.document.metadata, data);
+                // Use pagination approach for reliable data display
+                this.panel.webview.html = getPaginationHTML(this.document.metadata);
+                console.log('SASWebviewPanel: Virtual scrolling HTML set');
+
+                // CRITICAL FIX: Wait longer for webview to be ready
+                await new Promise(resolve => setTimeout(resolve, 500));
+
+                // Load first page (100 rows) for pagination
+                const initialRows = 100; // Load first page
+                const request: SASDataRequest = {
+                    filePath: this.document.uri.fsPath,
+                    startRow: 0,
+                    numRows: initialRows,
+                    selectedVars: this.document.metadata.variables.map(v => v.name),
+                    whereClause: ''
+                };
+
+                // Store selected variables for chunk loading
+                this.filterState.selectedVariables = this.document.metadata.variables.map(v => v.name);
+
+                const initialData = await this.document.getData(request);
+                console.log(`SASWebviewPanel: Initial data loaded - ${initialData.data.length} rows of ${totalRows} total`);
+
+                // CRITICAL FIX: Send initial data with proper structure
+                const message = {
+                    type: 'initialData',
+                    metadata: this.document.metadata,
+                    data: initialData.data,
+                    totalRows: totalRows,
+                    columns: initialData.columns
+                };
+
+                console.log('SASWebviewPanel: Preparing initial data message with', initialData.data.length, 'rows');
+
+                // Store the data to send when webview is ready
+                this.pendingInitialData = message;
+
+                // Try to send immediately if webview might be ready
+                if (this.webviewReady) {
+                    console.log('SASWebviewPanel: Webview ready, sending immediately');
+                    await this.panel.webview.postMessage(message);
+                    this.pendingInitialData = null;
+                } else {
+                    console.log('SASWebviewPanel: Webview not ready yet, will send when ready');
+                    // Also try after a delay as fallback
+                    setTimeout(async () => {
+                        if (this.pendingInitialData) {
+                            console.log('SASWebviewPanel: Sending data after timeout fallback');
+                            await this.panel.webview.postMessage(this.pendingInitialData);
+                            this.pendingInitialData = null;
+                        }
+                    }, 2000);
+                }
+            } else {
+                // Use regular loading for smaller datasets
+                const request: SASDataRequest = {
+                    filePath: this.document.uri.fsPath,
+                    startRow: 0,
+                    numRows: totalRows, // Load all rows for small datasets
+                    selectedVars: this.document.metadata.variables.map(v => v.name),
+                    whereClause: ''
+                };
+
+                const data = await this.document.getData(request);
+                console.log('SASWebviewPanel: Data loaded:', data);
+
+                // Update the HTML directly with the data
+                this.updateWebviewWithData(this.document.metadata, data);
+            }
 
         } catch (error) {
             console.error('SASWebviewPanel: Error loading data directly:', error);
@@ -119,8 +179,11 @@ export class SASWebviewPanel {
     }
 
     private async onDidReceiveMessage(message: WebviewMessage): Promise<void> {
+        console.log('SASWebviewPanel: Received message:', message.command, message.data);
+
         switch (message.command) {
             case 'loadData':
+                console.log('SASWebviewPanel: Handling loadData request');
                 await this.handleLoadData(message.data);
                 break;
 
@@ -145,7 +208,17 @@ export class SASWebviewPanel {
                 break;
 
             case 'applyFilter':
-                await this.handleApplyFilter(message.data);
+                await this.handleApplyFilterPagination(message.data);
+                break;
+
+            case 'webviewReady':
+                console.log('SASWebviewPanel: Webview signaled ready');
+                this.webviewReady = true;
+                if (this.pendingInitialData) {
+                    console.log('SASWebviewPanel: Sending pending initial data');
+                    await this.panel.webview.postMessage(this.pendingInitialData);
+                    this.pendingInitialData = null;
+                }
                 break;
 
             default:
@@ -154,24 +227,68 @@ export class SASWebviewPanel {
     }
 
     private async handleLoadData(data: any): Promise<void> {
+        console.log('=== EXTENSION CHUNK REQUEST DEBUG ===');
+        console.log(`SASWebviewPanel: Loading chunk - startRow: ${data.startRow}, numRows: ${data.numRows}`);
+        console.log('Filter state:', this.filterState);
+        console.log('Document metadata exists:', !!this.document.metadata);
+        console.log('Document total rows:', this.document.metadata?.total_rows);
+
         const request: SASDataRequest = {
             filePath: this.document.uri.fsPath,
             startRow: data.startRow || 0,
             numRows: data.numRows || 100,
-            selectedVars: this.filterState.selectedVariables,
-            whereClause: this.filterState.whereClause
+            selectedVars: data.selectedVars && data.selectedVars.length > 0 ?
+                         data.selectedVars :
+                         this.document.metadata?.variables.map(v => v.name) || [],
+            whereClause: data.whereClause || this.filterState.whereClause || ''
         };
 
+        console.log('Created request:', {
+            filePath: request.filePath,
+            startRow: request.startRow,
+            numRows: request.numRows,
+            selectedVarsCount: request.selectedVars?.length || 0,
+            whereClause: request.whereClause
+        });
+
         try {
+            console.log('Calling document.getData...');
             const result = await this.document.getData(request);
-            await this.postMessage({
-                command: 'data',
-                data: result
+            console.log(`SASWebviewPanel: Chunk loaded successfully - ${result.data.length} rows`);
+            console.log('Result details:', {
+                dataLength: result.data.length,
+                totalRows: result.total_rows,
+                columnsCount: result.columns.length,
+                firstRowKeys: result.data.length > 0 ? Object.keys(result.data[0]).length : 0
             });
+
+            // Send chunk back to webview for virtual scrolling
+            const response = {
+                type: 'dataChunk',
+                startRow: data.startRow,
+                data: result.data,
+                totalRows: result.total_rows,
+                columns: result.columns
+            };
+            
+            console.log('Sending response to webview:', {
+                type: response.type,
+                startRow: response.startRow,
+                dataLength: response.data.length,
+                totalRows: response.totalRows,
+                columnsCount: response.columns.length
+            });
+            
+            await this.panel.webview.postMessage(response);
+            console.log(`SASWebviewPanel: Chunk sent successfully - startRow: ${data.startRow}`);
         } catch (error) {
-            await this.postMessage({
-                command: 'error',
-                data: { message: `Failed to load data: ${error}` }
+            console.error('=== CHUNK REQUEST ERROR ===');
+            console.error('Error loading chunk:', error);
+            console.error('Request details:', request);
+            
+            await this.panel.webview.postMessage({
+                type: 'error',
+                message: `Failed to load data: ${error}`
             });
         }
     }
@@ -220,6 +337,54 @@ export class SASWebviewPanel {
         await this.loadInitialData();
     }
 
+    private async handleApplyFilterPagination(data: any): Promise<void> {
+        console.log('SASWebviewPanel: Applying pagination filter:', data);
+        
+        const whereClause = data.whereClause || '';
+        this.filterState.whereClause = whereClause;
+        
+        try {
+            if (whereClause.trim() === '') {
+                // Clearing filter - return to full dataset
+                console.log('Clearing filter - returning to full dataset');
+                await this.panel.webview.postMessage({
+                    type: 'filterResult',
+                    filteredRows: this.document.metadata?.total_rows || 0,
+                    whereClause: ''
+                });
+                return;
+            }
+
+            // Get filtered row count by requesting a small sample with the filter
+            const countRequest: SASDataRequest = {
+                filePath: this.document.uri.fsPath,
+                startRow: 0,
+                numRows: 1, // Just get one row to get the total count
+                selectedVars: this.document.metadata?.variables.map(v => v.name) || [],
+                whereClause: whereClause
+            };
+
+            const result = await this.document.getData(countRequest);
+            const filteredRowCount = result.filtered_rows || result.total_rows || 0;
+            
+            console.log('Filter result: ' + filteredRowCount + ' rows match the filter');
+
+            // Send filter result back to webview
+            await this.panel.webview.postMessage({
+                type: 'filterResult',
+                filteredRows: filteredRowCount,
+                whereClause: whereClause
+            });
+
+        } catch (error) {
+            console.error('Filter error:', error);
+            await this.panel.webview.postMessage({
+                type: 'error',
+                message: `Failed to apply filter: ${error}`
+            });
+        }
+    }
+
     private async handleApplyFilter(data: any): Promise<void> {
         // Client-side filtering now, no need for this
         console.log('SASWebviewPanel: Filter applied client-side');
@@ -266,21 +431,57 @@ export class SASWebviewPanel {
 
     private getVariableTooltipText(variable: any): string {
         let tooltip = `${variable.name} (${variable.type})`;
-        if (variable.label) tooltip += `\\n${variable.label}`;
-        if (variable.format) tooltip += `\\nFormat: ${variable.format}`;
+        if (variable.label) {
+            // Clean up label - remove problematic characters
+            const cleanLabel = variable.label.replace(/[\n\r]/g, ' ').replace(/['"]/g, '');
+            tooltip += ` - ${cleanLabel}`;
+        }
+        if (variable.format) tooltip += ` [Format: ${variable.format}]`;
         return tooltip;
     }
 
-    private updateWebviewWithData(metadata: any, data: any): void {
-        console.log('SASWebviewPanel: Updating webview with data directly');
-        const fileName = metadata.file_path.split(/[\\/]/).pop();
+    private escapeHtml(text: string): string {
+        if (!text) return '';
+        return text
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/\//g, '&#x2F;');
+    }
 
+    private updateWebviewWithData(metadata: any, data: any): void {
+        console.log('SASWebviewPanel: Updating webview with virtual scrolling');
+
+        // Use the complete virtual scrolling implementation
+        this.panel.webview.html = getVirtualScrollingHTMLComplete(metadata);
+
+        // Send initial data after HTML loads
+        setTimeout(() => {
+            this.panel.webview.postMessage({
+                type: 'initialData',
+                data: data.data,
+                columns: data.columns,
+                metadata: metadata,
+                totalRows: data.total_rows
+            });
+        }, 100);
+
+    }
+
+    private updateWebviewWithDataOld(metadata: any, data: any): void {
+        // Old implementation kept for reference - not used anymore
+        const fileName = metadata.file_path.split(/[\\/]/).pop();
         const variableList = metadata.variables.map((variable: any, index: number) => {
             const icon = this.getVariableIcon(variable);
+            const varName = this.escapeHtml(variable.name);
+            const varLabel = variable.label ? this.escapeHtml(variable.label) : '';
+            const tooltipText = this.escapeHtml(this.getVariableTooltipText(variable));
             return `
                 <div class="variable-item">
-                    <input type="checkbox" checked id="var-${index}" onchange="toggleColumn('${variable.name}', this.checked)">
-                    <span class="variable-text show-both" title="${this.getVariableTooltipText(variable)}">${icon} ${variable.name}${variable.label && variable.label !== variable.name ? ` (${variable.label})` : ''}</span>
+                    <input type="checkbox" checked id="var-${index}" data-column-index="${index}" class="column-toggle">
+                    <span class="variable-text show-both" title="${tooltipText}">${icon} ${varName}${varLabel && varLabel !== varName ? ` (${varLabel})` : ''}</span>
                 </div>`;
         }).join('');
 
@@ -394,11 +595,11 @@ export class SASWebviewPanel {
                     <div class="section-title">Filtering</div>
                     <div class="filter-section">
                         <div class="filter-input">
-                            <input type="text" class="where-input" placeholder="visitnum = 2 or age > 60" id="where-clause" onkeypress="if(event.key==='Enter') applyFilter()">
+                            <input type="text" class="where-input" placeholder="visitnum = 2 or age > 60" id="where-clause">
                         </div>
                         <div class="filter-input">
-                            <button class="btn" onclick="applyFilter()">Apply</button>
-                            <button class="btn btn-secondary" onclick="clearFilter()">Clear</button>
+                            <button class="btn" id="apply-filter-btn">Apply</button>
+                            <button class="btn btn-secondary" id="clear-filter-btn">Clear</button>
                         </div>
                     </div>
                 </div>
@@ -429,8 +630,8 @@ export class SASWebviewPanel {
                         </div>
                     </div>
                     <div style="margin-bottom: 15px;">
-                        <button class="btn" onclick="selectAll()" style="margin-right: 8px;">Select All</button>
-                        <button class="btn btn-secondary" onclick="deselectAll()">Deselect All</button>
+                        <button class="btn" id="select-all-btn" style="margin-right: 8px;">Select All</button>
+                        <button class="btn btn-secondary" id="deselect-all-btn">Deselect All</button>
                     </div>
 
                     <div class="variables-container">
@@ -455,16 +656,53 @@ export class SASWebviewPanel {
             </div>
 
             <script>
-                // Embedded data from extension
-                const allData = ${JSON.stringify(data.data)};
-                const columns = ${JSON.stringify(data.columns)};
-                const metadata = ${JSON.stringify(metadata)};
-                let filteredData = allData;
-                let selectedColumns = [...columns];
+                // Data will be sent via postMessage to avoid embedding large datasets
+                let allData = [];
+                let columns = [];
+                let metadata = {};
+                let filteredData = [];
+                let selectedColumns = [];
 
-                // Initialize the table
-                renderTable();
-                updateStats();
+                // Wait for data from extension
+                window.addEventListener('message', event => {
+                    const message = event.data;
+                    if (message.type === 'initialData') {
+                        allData = message.data;
+                        columns = message.columns;
+                        metadata = message.metadata;
+                        filteredData = allData;
+                        selectedColumns = [...columns];
+
+                        // Initialize the table
+                        renderTable();
+                        updateStats();
+
+                        // Set up event listeners for checkboxes
+                        setupCheckboxListeners();
+                    }
+                });
+
+                function setupCheckboxListeners() {
+                    // Setup checkbox listeners
+                    document.querySelectorAll('.column-toggle').forEach(checkbox => {
+                        checkbox.addEventListener('change', function(e) {
+                            const index = parseInt(this.dataset.columnIndex);
+                            const columnName = columns[index];
+                            toggleColumn(columnName, this.checked);
+                        });
+                    });
+
+                    // Setup button listeners
+                    document.getElementById('select-all-btn').addEventListener('click', selectAll);
+                    document.getElementById('deselect-all-btn').addEventListener('click', deselectAll);
+                    document.getElementById('apply-filter-btn').addEventListener('click', applyFilter);
+                    document.getElementById('clear-filter-btn').addEventListener('click', clearFilter);
+
+                    // Setup enter key on where clause input
+                    document.getElementById('where-clause').addEventListener('keypress', function(e) {
+                        if (e.key === 'Enter') applyFilter();
+                    });
+                }
 
                 function toggleColumn(columnName, isVisible) {
                     if (isVisible && !selectedColumns.includes(columnName)) {
@@ -552,6 +790,14 @@ export class SASWebviewPanel {
                     expression = expression.replace(/\bGE\b/gi, ' >= ');
                     expression = expression.replace(/\bLE\b/gi, ' <= ');
 
+                    // Handle IN operator - convert to array includes check
+                    expression = expression.replace(/(\w+)\s+in\s+\((.*?)\)/gi, (match, column, values) => {
+                        // Parse the values list and keep them as-is (they'll be quoted strings)
+                        const valueList = values.split(',').map(v => v.trim());
+                        // Build an array.includes() check
+                        return '[' + valueList.join(',') + '].includes(' + column + ')';
+                    });
+
                     console.log('After operator replacement:', expression);
 
                     // Simple parsing for basic conditions
@@ -630,6 +876,11 @@ export class SASWebviewPanel {
 
                         // Convert single = to == for JavaScript evaluation
                         evalExpression = evalExpression.replace(/([^!<>=])=([^=])/g, '$1==$2');
+
+                        // Handle IN operator - convert to array includes check (after variable substitution)
+                        evalExpression = evalExpression.replace(/('(?:[^'\\]|\\.)*')\s+in\s+\((.*?)\)/gi, (match, value, list) => {
+                            return '[' + list + '].includes(' + value + ')';
+                        });
 
                         console.log('Eval expression:', evalExpression);
                         return eval(evalExpression);
@@ -827,6 +1078,16 @@ export class SASWebviewPanel {
             </script>
         </body>
         </html>`;
+
+        // Send data via postMessage after HTML is loaded
+        setTimeout(() => {
+            this.panel.webview.postMessage({
+                type: 'initialData',
+                data: data.data,
+                columns: data.columns,
+                metadata: metadata
+            });
+        }, 100);
     }
 
     private getWebviewContent(): string {

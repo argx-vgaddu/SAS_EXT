@@ -6,7 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ### Python Setup
 ```bash
+# Install Python dependencies (Windows)
 py -m pip install -r python/requirements.txt
+# Or install individually
+py -m pip install pandas pyreadstat numpy
 ```
 
 ### TypeScript Compilation
@@ -14,72 +17,124 @@ py -m pip install -r python/requirements.txt
 # Full Node.js path required on Windows
 "C:\nodejs\node-v22.19.0-win-x64\node.exe" node_modules/typescript/lib/tsc.js -p .
 
-# Or use npm script (may require Node.js in PATH)
-npm run compile
-npm run watch
+# Or use npm scripts (requires Node.js in PATH)
+npm run compile      # One-time compilation
+npm run watch        # Watch mode for development
 ```
 
 ### Testing
 ```bash
-# Test Python backend
-py python/sas_reader.py load "path/to/test.sas7bdat"
+# Test Python backend directly
+py python/sas_reader.py metadata "path/to/test.sas7bdat"
+py python/sas_reader.py data "path/to/test.sas7bdat" 0 100
 py test_python.py
 
 # VS Code Extension Testing
-# Use F5 in VS Code to launch Extension Development Host
+# Press F5 in VS Code to launch Extension Development Host
 ```
 
 ## Architecture Overview
 
-This is a **VS Code extension for viewing SAS7BDAT datasets** using a hybrid TypeScript/Python architecture:
+This VS Code extension enables viewing and filtering SAS7BDAT dataset files. The architecture uses a **hybrid TypeScript/Python approach** with multiple rendering strategies.
 
 ### Core Components
 
-**1. VS Code Extension Layer (TypeScript)**
-- `src/extension.ts` - Extension entry point, registers custom editor for `.sas7bdat` files
-- `src/SasDataProvider.ts` - Custom editor provider, manages document lifecycle and Python subprocess communication
-- `src/WebviewPanel.ts` - Webview management, handles UI rendering and user interactions
-- `src/types.ts` - TypeScript interfaces for data structures
+**1. Extension Layer (TypeScript)**
+- `src/extension.ts` - Entry point, registers custom editor provider for `.sas7bdat` files
+- `src/SasDataProvider.ts` - Implements `vscode.CustomReadonlyEditorProvider`, manages document lifecycle and Python subprocess communication
+- `src/WebviewPanel.ts` - Central webview management, message routing, and rendering strategy selection
 
 **2. Python Backend (`python/sas_reader.py`)**
-- Handles SAS file reading using `pyreadstat` library
-- Provides CLI interface with commands: `load`, `data`, `metadata`
-- Supports pagination, variable selection, and WHERE clause filtering
-- Returns JSON responses for frontend consumption
+- Uses `pyreadstat` library for native SAS7BDAT file reading
+- Provides CLI interface with commands:
+  - `metadata` - Returns dataset structure and variable information
+  - `data` - Returns paginated data with optional filtering and variable selection
+- Supports WHERE clause filtering at pandas level for efficiency
+- Returns JSON responses with data arrays and metadata
 
-**3. Frontend (Embedded in WebviewPanel.ts)**
-- Single HTML page with embedded CSS/JavaScript
-- No separate webview files - everything is generated as template literals
-- Implements virtual scrolling, variable selection, and filtering UI
+**3. Rendering Strategies**
+The extension currently supports three rendering approaches (controlled by `WebviewPanel.ts`):
 
-### Data Flow
+- **PaginationWebview.ts** (Current/Recommended) - Reliable pagination with 50/100/200/500 rows per page
+- **VirtualScrollingWebviewComplete.ts** - Virtual scrolling for large datasets (has reliability issues beyond row 172)
+- **VirtualScrollingWebview.ts** - Legacy virtual scrolling implementation
 
-1. **File Opening**: VS Code detects `.sas7bdat` extension → triggers custom editor
-2. **Metadata Loading**: `SASDatasetDocument` spawns Python process to load file metadata
-3. **UI Rendering**: `SASWebviewPanel` generates HTML with embedded data and creates webview
-4. **User Interactions**: All filtering/selection happens client-side for performance
-5. **Data Refresh**: New Python subprocess calls only when filters/selections change
+### Data Flow Architecture
 
-### Key Technical Details
+1. **File Opening**: VS Code detects `.sas7bdat` → triggers custom editor via extension registration
+2. **Metadata Loading**: `SASDatasetDocument.openDocument()` spawns Python process to read file metadata
+3. **Webview Creation**: `SASWebviewPanel` creates webview with selected rendering strategy
+4. **Initial Data Load**:
+   - Pagination mode: Loads first page (100 rows by default)
+   - Virtual scrolling: Loads up to 1000 rows initially
+5. **Message Communication**:
+   - Webview → Extension: `loadData`, `applyFilter`, `webviewReady`
+   - Extension → Webview: `initialData`, `dataChunk`, `filterResult`, `error`
+6. **Data Updates**: User interactions trigger Python subprocess calls for new data
 
-**Python Communication**: Uses `spawn('py', args)` to execute Python commands, with full file paths and JSON response parsing.
+### Critical Implementation Details
 
-**Client-Side Processing**: WHERE clause filtering and virtual scrolling implemented in JavaScript to avoid constant Python calls for better performance.
+**Message Handler Setup Sequence** (Must follow this order):
+1. Set webview options (`enableScripts: true`)
+2. Attach message handler in constructor
+3. Set HTML content
+4. Wait for `webviewReady` signal
+5. Send initial data
 
-**SAS Compatibility**: Supports SAS-style operators (`EQ`, `NE`, `AND`, `OR`) and case-insensitive variable names.
+**Python Process Management**:
+- Each data request spawns new Python subprocess
+- Uses `spawn('py', args)` on Windows (not `python` or `python3`)
+- Full file paths required for Windows compatibility
+- JSON parsing of stdout, error handling via stderr
 
-**UI Layout**: Header with controls (top-right), sidebar with variable selection (left), main data table (right) with sticky headers.
+**Webview State Management**:
+- `FilterState` maintains selected variables, WHERE clause, and column order
+- Client-side filtering for responsive UI (pagination mode)
+- Server-side filtering for large datasets (virtual scrolling)
 
-## Windows-Specific Notes
+**Known Issues with Virtual Scrolling**:
+- Data stops displaying beyond row 172 (debugging logs added)
+- Chunk loading timeout issues partially resolved with retry logic
+- Fallback to pagination mode recommended for reliability
 
-- Python command is `py` (not `python`)
-- Node.js requires full path: `"C:\nodejs\node-v22.19.0-win-x64\node.exe"`
-- Use `.cmd` extensions for npm scripts in some cases
+## Windows-Specific Requirements
 
-## Extension Development
+- Python command: `py` (not `python` or `python3`)
+- Node.js path: Full path required `"C:\nodejs\node-v22.19.0-win-x64\node.exe"`
+- File paths: Use backslashes or properly escape forward slashes
 
-The extension uses VS Code's Custom Editor API with `vscode.CustomReadonlyEditorProvider`. Each `.sas7bdat` file creates a `SASDatasetDocument` that manages the Python backend connection and a `SASWebviewPanel` that handles the UI.
+## Current Implementation Status
 
-Variable display supports three modes: name only, label only, or both (affects both sidebar and table headers).
+### Working Features
+- ✅ Pagination interface with reliable data display
+- ✅ WHERE clause filtering (SAS-style syntax)
+- ✅ Variable selection and display mode toggling
+- ✅ Metadata tooltips and variable information
+- ✅ Professional sidebar layout
 
-All data operations (filtering, column selection) maintain state in the webview JavaScript and trigger Python calls only when necessary for new data.
+### Issues Being Debugged
+- ⚠️ Virtual scrolling stops at row 172 (extensive debugging added)
+- ⚠️ Chunk loading timeouts in virtual scrolling mode
+- ⚠️ DOM element validation issues in virtual scroller
+
+### Recent Changes
+- Added pagination mode as default (more reliable than virtual scrolling)
+- Extensive debugging logs added to trace virtual scrolling issues
+- Fallback DOM creation for missing elements
+- Enhanced data validation for loaded rows
+
+## Data Loading Strategies
+
+**Small Datasets (< 1000 rows)**:
+- Load all data initially
+- Client-side filtering and pagination
+
+**Large Datasets (≥ 1000 rows)**:
+- Pagination: Load 100 rows per page request
+- Virtual Scrolling: Load 1000 rows initially, then 100-row chunks on scroll
+- WHERE filtering applied at pandas level for efficiency
+
+**Buffer Zones** (Virtual Scrolling):
+- Pre-load 5-20 rows above/below visible range
+- Double buffer at end for smoother scrolling
+- Retry mechanism with exponential backoff for failed chunks
