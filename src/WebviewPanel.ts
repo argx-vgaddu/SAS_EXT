@@ -295,7 +295,7 @@ export class SASWebviewPanel {
                 body { font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-foreground); margin: 0; padding: 10px; }
                 .header {
                     display: grid;
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: minmax(250px, 1fr) minmax(300px, 1fr) minmax(200px, 1fr);
                     gap: 20px;
                     padding: 15px 20px;
                     background: var(--vscode-sideBar-background);
@@ -303,6 +303,16 @@ export class SASWebviewPanel {
                     border: 1px solid var(--vscode-panel-border);
                     margin-bottom: 15px;
                     align-items: center;
+                }
+                @media (max-width: 1200px) {
+                    .header {
+                        grid-template-columns: 1fr;
+                        gap: 15px;
+                    }
+                    .header-section.center,
+                    .header-section.right {
+                        align-items: flex-start;
+                    }
                 }
                 .header-section { display: flex; flex-direction: column; }
                 .header-section.center { align-items: center; }
@@ -322,10 +332,24 @@ export class SASWebviewPanel {
                 .control-label { font-size: 11px; color: var(--vscode-descriptionForeground); min-width: 50px; }
                 select { padding: 4px 6px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 11px; }
                 .content { display: flex; gap: 15px; height: calc(100vh - 180px); }
-                .sidebar { min-width: 250px; max-width: 450px; width: 320px; display: flex; flex-direction: column; transition: width 0.3s ease; }
-                .sidebar.compact { width: 280px; }
-                .sidebar.expanded { width: 400px; }
-                .data-area { flex: 1; display: flex; flex-direction: column; }
+                .sidebar {
+                    min-width: 250px;
+                    max-width: min(450px, 35vw);
+                    width: min(320px, 25vw);
+                    display: flex;
+                    flex-direction: column;
+                    transition: width 0.3s ease;
+                    flex-shrink: 0;
+                }
+                .sidebar.compact { width: min(280px, 22vw); }
+                .sidebar.expanded { width: min(400px, 35vw); }
+                .data-area {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-width: 0;
+                    overflow: hidden;
+                }
                 .variables-container { flex: 1; overflow-y: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 10px; background: var(--vscode-sideBar-background); }
                 table { border-collapse: collapse; width: 100%; }
                 th, td { border: 1px solid var(--vscode-panel-border); padding: 6px 8px; text-align: left; font-size: 12px; }
@@ -418,8 +442,8 @@ export class SASWebviewPanel {
                     <div class="data-stats" id="data-stats" style="margin-bottom: 10px; font-size: 12px; color: var(--vscode-descriptionForeground);">
                         Showing ${data.returned_rows.toLocaleString()} rows
                     </div>
-                    <div style="flex: 1; overflow: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px;">
-                        <table id="data-table" style="min-width: max-content;">
+                    <div style="flex: 1; overflow: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px; width: 100%;">
+                        <table id="data-table" style="min-width: max-content; width: auto;">
                             <thead id="table-header">
                                 <tr></tr>
                             </thead>
