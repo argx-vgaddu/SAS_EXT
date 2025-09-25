@@ -213,24 +213,23 @@ class SASReader:
             page_df = working_df.iloc[start_row:end_row]
 
             # OPTIMIZATION: Use vectorized operations for data conversion
-            # Replace NaN with None for JSON serialization
-            page_df = page_df.where(pd.notnull(page_df), None)
-
-            # Convert to records more efficiently
+            # Convert to records first, then handle NaN and special types
             data = page_df.to_dict('records')
 
-            # Fast type conversion for special types
+            # Fast type conversion for special types and handle NaN
             for row in data:
                 for col, value in row.items():
-                    if value is not None:
-                        if isinstance(value, (pd.Timestamp, pd.Period)):
-                            row[col] = str(value)
-                        elif hasattr(value, 'isoformat'):
-                            row[col] = value.isoformat()
-                        elif isinstance(value, bytes):
-                            row[col] = value.decode('utf-8', errors='ignore')
-                        elif hasattr(value, 'item'):  # numpy types
-                            row[col] = value.item()
+                    # Handle NaN/null values
+                    if pd.isna(value):
+                        row[col] = None
+                    elif isinstance(value, (pd.Timestamp, pd.Period)):
+                        row[col] = str(value)
+                    elif hasattr(value, 'isoformat'):
+                        row[col] = value.isoformat()
+                    elif isinstance(value, bytes):
+                        row[col] = value.decode('utf-8', errors='ignore')
+                    elif hasattr(value, 'item'):  # numpy types
+                        row[col] = value.item()
 
             valid_row_count = len(data)
 
