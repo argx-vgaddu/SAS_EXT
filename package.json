@@ -1,14 +1,37 @@
 {
   "name": "sas-dataset-viewer",
   "displayName": "SAS Dataset Viewer",
-  "description": "View and filter SAS7BDAT dataset files in VS Code",
-  "version": "0.1.0",
+  "description": "View, filter, and analyze SAS7BDAT dataset files directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
+  "version": "1.0.0",
+  "publisher": "YOUR-PUBLISHER-ID",
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1e3a5f",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR-USERNAME/sas-dataset-viewer"
+  },
+  "homepage": "https://github.com/YOUR-USERNAME/sas-dataset-viewer#readme",
+  "bugs": {
+    "url": "https://github.com/YOUR-USERNAME/sas-dataset-viewer/issues"
+  },
+  "license": "MIT",
   "engines": {
     "vscode": "^1.74.0"
   },
   "categories": [
     "Data Science",
-    "Viewers"
+    "Viewers",
+    "Other"
+  ],
+  "keywords": [
+    "sas",
+    "sas7bdat",
+    "dataset",
+    "data viewer",
+    "statistics"
   ],
   "activationEvents": [
     "onCustomEditor:sasDatasetViewer.sas7bdat"
