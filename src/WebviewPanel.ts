@@ -289,72 +289,113 @@ export class SASWebviewPanel {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'unsafe-eval';">
             <style>
-                body { font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-foreground); margin: 10px; }
-                .header { border-bottom: 1px solid var(--vscode-panel-border); padding-bottom: 10px; margin-bottom: 15px; }
-                h2 { margin: 0 0 5px 0; font-size: 16px; }
-                .dataset-label { color: var(--vscode-descriptionForeground); font-size: 13px; font-style: italic; margin-bottom: 5px; }
-                .stats { color: var(--vscode-descriptionForeground); font-size: 12px; margin-bottom: 10px; }
-                .content { display: flex; gap: 15px; }
-                .sidebar { width: 250px; }
-                .data-area { flex: 1; }
+                body { font-family: var(--vscode-font-family); background: var(--vscode-editor-background); color: var(--vscode-foreground); margin: 0; padding: 10px; }
+                .header {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr 1fr;
+                    gap: 20px;
+                    padding: 15px 20px;
+                    background: var(--vscode-sideBar-background);
+                    border-radius: 6px;
+                    border: 1px solid var(--vscode-panel-border);
+                    margin-bottom: 15px;
+                    align-items: center;
+                }
+                .header-section { display: flex; flex-direction: column; }
+                .header-section.center { align-items: center; }
+                .header-section.right { align-items: flex-end; }
+                .dataset-title { font-size: 18px; font-weight: 600; margin: 0; color: var(--vscode-foreground); }
+                .dataset-label { color: var(--vscode-descriptionForeground); font-size: 12px; margin: 2px 0 0 0; }
+                .stats { color: var(--vscode-descriptionForeground); font-size: 11px; margin: 2px 0 0 0; }
+                .filter-section { display: flex; flex-direction: column; gap: 8px; }
+                .filter-input { display: flex; gap: 5px; align-items: center; }
+                .where-input { flex: 1; padding: 6px 8px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 12px; }
+                .btn { padding: 6px 12px; border: 1px solid var(--vscode-button-border); background: var(--vscode-button-background); color: var(--vscode-button-foreground); border-radius: 3px; cursor: pointer; font-size: 11px; }
+                .btn:hover { background: var(--vscode-button-hoverBackground); }
+                .btn-secondary { background: var(--vscode-button-secondaryBackground); color: var(--vscode-button-secondaryForeground); }
+                .btn-secondary:hover { background: var(--vscode-button-secondaryHoverBackground); }
+                .controls-section { display: flex; flex-direction: column; gap: 10px; }
+                .control-group { display: flex; align-items: center; gap: 8px; }
+                .control-label { font-size: 11px; color: var(--vscode-descriptionForeground); min-width: 50px; }
+                select { padding: 4px 6px; border: 1px solid var(--vscode-input-border); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border-radius: 3px; font-size: 11px; }
+                .content { display: flex; gap: 15px; height: calc(100vh - 180px); }
+                .sidebar { width: 280px; display: flex; flex-direction: column; }
+                .data-area { flex: 1; display: flex; flex-direction: column; }
+                .variables-container { flex: 1; overflow-y: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px; padding: 10px; background: var(--vscode-sideBar-background); }
                 table { border-collapse: collapse; width: 100%; }
-                th, td { border: 1px solid var(--vscode-panel-border); padding: 8px; text-align: left; }
-                th { background: var(--vscode-editor-background); font-weight: bold; position: sticky; top: 0; z-index: 10; }
-                .variable-item { padding: 4px 0; }
+                th, td { border: 1px solid var(--vscode-panel-border); padding: 6px 8px; text-align: left; font-size: 12px; }
+                th { background: var(--vscode-editor-background); font-weight: 600; position: sticky; top: 0; z-index: 10; }
+                .variable-item { padding: 6px 0; border-bottom: 1px solid var(--vscode-panel-border); }
+                .variable-item:last-child { border-bottom: none; }
                 .variable-item input { margin-right: 8px; }
-                h3 { margin: 0 0 10px 0; font-size: 14px; }
-                .where-input { width: 100%; padding: 4px; margin: 10px 0; }
+                h3 { margin: 0 0 10px 0; font-size: 13px; font-weight: 600; }
+                .section-title { font-size: 11px; font-weight: 600; color: var(--vscode-descriptionForeground); text-transform: uppercase; margin-bottom: 8px; }
             </style>
             <title>SAS Dataset Viewer</title>
         </head>
         <body>
             <div class="header">
-                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                    <div>
-                        <h2>${fileName}</h2>
-                        ${metadata.dataset_label ? `<div class="dataset-label">Label: ${metadata.dataset_label}</div>` : `<div class="dataset-label" style="color: red;">No dataset label found</div>`}
-                        <div class="stats" id="stats">${data.total_rows} observations, ${metadata.total_variables} variables</div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div>
-                            <label style="font-size: 11px; margin-right: 5px;">Display:</label>
-                            <select id="variable-display-mode" onchange="updateVariableDisplay()" style="padding: 2px; font-size: 11px;">
-                                <option value="name">Name Only</option>
-                                <option value="label">Label Only</option>
-                                <option value="both" selected>Name & Label</option>
-                            </select>
+                <!-- Dataset Info Section -->
+                <div class="header-section">
+                    <div class="dataset-title">${fileName.replace('.sas7bdat', '')}</div>
+                    ${metadata.dataset_label ? `<div class="dataset-label">${metadata.dataset_label}</div>` : ''}
+                    <div class="stats">${data.total_rows.toLocaleString()} observations • ${metadata.total_variables} variables</div>
+                </div>
+
+                <!-- Filter Section -->
+                <div class="header-section center">
+                    <div class="section-title">Filtering</div>
+                    <div class="filter-section">
+                        <div class="filter-input">
+                            <input type="text" class="where-input" placeholder="visitnum = 2 or age > 60" id="where-clause" onkeypress="if(event.key==='Enter') applyFilter()">
                         </div>
-                        <button onclick="showVariableMetadata()" style="padding: 4px 12px; font-size: 11px;">View Variable Details</button>
+                        <div class="filter-input">
+                            <button class="btn" onclick="applyFilter()">Apply</button>
+                            <button class="btn btn-secondary" onclick="clearFilter()">Clear</button>
+                        </div>
                     </div>
                 </div>
-                <div style="margin-top: 10px;">
-                    <input type="text" class="where-input" placeholder="e.g., visitnum = 2 or age > 60" id="where-clause" onkeypress="if(event.key==='Enter') applyFilter()">
-                    <button onclick="applyFilter()" style="margin-left: 5px; padding: 4px 12px;">Apply Filter</button>
-                    <button onclick="clearFilter()" style="margin-left: 5px; padding: 4px 12px;">Clear</button>
+
+                <!-- Controls Section -->
+                <div class="header-section right">
+                    <div class="section-title">Display Options</div>
+                    <div class="controls-section">
+                        <div class="control-group">
+                            <label class="control-label">Show:</label>
+                            <select id="variable-display-mode" onchange="updateVariableDisplay()">
+                                <option value="name">Names</option>
+                                <option value="label">Labels</option>
+                                <option value="both" selected>Both</option>
+                            </select>
+                        </div>
+                        <button class="btn" onclick="showVariableMetadata()">Variable Details</button>
+                    </div>
                 </div>
             </div>
 
             <div class="content">
                 <div class="sidebar">
-                    <h3>Variables</h3>
-                    <div style="margin-bottom: 10px;">
-                        <button onclick="selectAll()" style="margin-right: 5px; padding: 4px 8px; font-size: 11px;">Select All</button>
-                        <button onclick="deselectAll()" style="padding: 4px 8px; font-size: 11px;">Deselect All</button>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3>Variables</h3>
+                        <div id="selected-count" style="font-size: 11px; color: var(--vscode-descriptionForeground);">
+                            ${metadata.total_variables} selected
+                        </div>
+                    </div>
+                    <div style="margin-bottom: 15px;">
+                        <button class="btn" onclick="selectAll()" style="margin-right: 8px;">Select All</button>
+                        <button class="btn btn-secondary" onclick="deselectAll()">Deselect All</button>
                     </div>
 
-
-                    <div class="variables">
+                    <div class="variables-container">
                         ${variableList}
                     </div>
-                    <h3 style="margin-top: 20px;">Dataset Info</h3>
-                    <div>Total rows: ${data.total_rows}</div>
-                    <div>Total variables: ${metadata.total_variables}</div>
-                    <div id="selected-count">Selected variables: ${metadata.total_variables}</div>
                 </div>
 
                 <div class="data-area">
-                    <div class="data-stats" id="data-stats">Showing ${data.returned_rows} rows</div>
-                    <div style="height: calc(100vh - 200px); overflow: auto; max-width: calc(100vw - 300px); border: 1px solid var(--vscode-panel-border);">
+                    <div class="data-stats" id="data-stats" style="margin-bottom: 10px; font-size: 12px; color: var(--vscode-descriptionForeground);">
+                        Showing ${data.returned_rows.toLocaleString()} rows
+                    </div>
+                    <div style="flex: 1; overflow: auto; border: 1px solid var(--vscode-panel-border); border-radius: 3px;">
                         <table id="data-table" style="min-width: max-content;">
                             <thead id="table-header">
                                 <tr></tr>
