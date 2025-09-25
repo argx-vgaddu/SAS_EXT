@@ -627,7 +627,17 @@ export function getPaginationHTML(metadata: any): string {
             <div class="pagination-info">
                 <span id="current-range">Loading...</span>
             </div>
-            <button class="btn" id="metadata-btn" style="margin-left: auto;">📊 Metadata</button>
+            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
+                <div class="display-mode" style="display: flex; align-items: center; gap: 5px;">
+                    <label style="font-size: 12px;">Show:</label>
+                    <select id="display-mode" class="display-select" style="padding: 2px 4px; font-size: 12px;">
+                        <option value="name" selected>Names</option>
+                        <option value="label">Labels</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+                <button class="btn" id="metadata-btn">📊 Metadata</button>
+            </div>
         </div>
 
         <div class="main-container">
@@ -635,27 +645,15 @@ export function getPaginationHTML(metadata: any): string {
                 <div class="sidebar-header">
                     <div class="sidebar-title">Dataset Variables</div>
                     <div class="dataset-label">${metadata.dataset_label || fileName}</div>
-                    
+
                     <div class="variable-controls">
                         <div class="selected-count" id="selected-count">33 selected</div>
-                        <div class="display-mode">
-                            <label>Show:</label>
-                            <select id="display-mode" class="display-select">
-                                <option value="name" selected>Names</option>
-                                <option value="label">Labels</option>
-                                <option value="both">Both</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px;">Select All</button>
-                        <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px;">Clear All</button>
                     </div>
 
-                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vscode-panel-border);">
-                        <div style="margin-bottom: 8px;">
-                            <label for="keep-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold;">KEEP (comma-separated):</label>
+                    <!-- KEEP/DROP section at top -->
+                    <div style="margin-top: 12px; padding: 10px; background: var(--vscode-editor-background); border-radius: 4px;">
+                        <div style="margin-bottom: 10px;">
+                            <label for="keep-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold; color: var(--vscode-foreground);">KEEP (comma-separated):</label>
                             <input type="text" id="keep-input"
                                    placeholder="e.g., USUBJID, AGE, WEIGHT"
                                    style="width: 100%; padding: 4px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px;"
@@ -664,13 +662,19 @@ export function getPaginationHTML(metadata: any): string {
                         </div>
 
                         <div>
-                            <label for="drop-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold;">DROP (comma-separated):</label>
+                            <label for="drop-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold; color: var(--vscode-foreground);">DROP (comma-separated):</label>
                             <input type="text" id="drop-input"
                                    placeholder="e.g., DESC_LONG, NOTE, CHAR_MIXED"
                                    style="width: 100%; padding: 4px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px;"
                                    title="Drop these variables (comma-separated, case-insensitive)">
                             <button class="btn" id="apply-drop-btn" style="width: 100%; margin-top: 4px; font-size: 11px;">Apply Drop</button>
                         </div>
+                    </div>
+
+                    <!-- Select/Clear buttons just above variable list -->
+                    <div style="display: flex; gap: 8px; margin-top: 12px;">
+                        <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px;">Select All</button>
+                        <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px;">Clear All</button>
                     </div>
                 </div>
                 
