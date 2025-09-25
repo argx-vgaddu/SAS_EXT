@@ -1,0 +1,50 @@
+{
+  "name": "sas-dataset-viewer",
+  "displayName": "SAS Dataset Viewer",
+  "description": "View and filter SAS7BDAT dataset files in VS Code",
+  "version": "0.1.0",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Data Science",
+    "Viewers"
+  ],
+  "activationEvents": [
+    "onCustomEditor:sasDatasetViewer.sas7bdat"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "customEditors": [
+      {
+        "viewType": "sasDatasetViewer.sas7bdat",
+        "displayName": "SAS Dataset Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.sas7bdat"
+          }
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "sasDatasetViewer.openDataset",
+        "title": "Open SAS Dataset",
+        "category": "SAS"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
+  },
+  "devDependencies": {
+    "@types/node": "18.x",
+    "@types/vscode": "^1.74.0",
+    "typescript": "^5.0.0"
+  },
+  "dependencies": {
+    "child_process": "^1.0.2"
+  }
+}
