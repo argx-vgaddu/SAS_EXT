@@ -9,12 +9,14 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 ## ✨ Features
 
 ### 📊 **Dataset Viewing**
+
 - Open and view SAS7BDAT files directly in VS Code
 - Professional tabular display with pagination
 - Support for large datasets (tested with 12,000+ rows)
 - Real-time data loading with visual feedback
 
 ### 🔍 **Advanced Filtering**
+
 - **WHERE Clause Filtering**: Use SAS-style WHERE conditions
   - Case-insensitive variable names
   - Support for operators: `=`, `>`, `<`, `>=`, `<=`, `!=`
@@ -22,6 +24,7 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
   - Example: `AGE > 30 AND COUNTRY = 'USA'`
 
 ### 📝 **Variable Management**
+
 - **KEEP/DROP Variables**: Quick variable selection by typing
   - KEEP: Specify variables to include (comma-separated)
   - DROP: Specify variables to exclude (comma-separated)
@@ -30,6 +33,7 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 - **Display Modes**: Show variable names, labels, or both
 
 ### 🎯 **Smart Features**
+
 - **Metadata View**: See all variable details in a popup
 - **Variable Icons**: Visual indicators for data types
   - 📝 Character variables
@@ -40,6 +44,7 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
   - % Percentage variables
 
 ### 🚀 **Performance**
+
 - Optimized pagination (50, 100, 200, 500 rows per page)
 - Efficient Python backend using pandas and pyreadstat
 - Smart data caching for smooth navigation
@@ -48,40 +53,49 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 ## 📋 Requirements
 
 ### Python Requirements
+
 - Python 3.x installed and accessible as `py` command
 - Required Python packages:
+
   ```bash
   pip install pandas pyreadstat
   ```
 
 ### VS Code Requirements
+
 - VS Code version 1.74.0 or higher
 
 ## 🎮 Usage
 
 ### Opening SAS Datasets
+
 1. **File Explorer**: Simply click on any `.sas7bdat` file
 2. **Command Palette**: Use `SAS: Open SAS Dataset` command
 3. **File Menu**: File → Open → Select .sas7bdat file
 
 ### Filtering Data
+
 1. **WHERE Clause**: Enter conditions in the WHERE input box
+
    ```sql
    AGE > 30 AND GENDER = 'M'
    VISITNUM >= 5 OR COUNTRY = 'USA'
    ```
 
 2. **KEEP Variables**: Type variable names to keep
+
    ```
    USUBJID, AGE, WEIGHT, HEIGHT
    ```
 
 3. **DROP Variables**: Type variable names to exclude
+
    ```
    DESC_LONG, NOTE, CHAR_MIXED
    ```
 
 ### Keyboard Shortcuts
+
 - `Enter` in WHERE field: Apply filter
 - `Enter` in KEEP/DROP fields: Apply selection
 - Click variable checkboxes: Toggle selection
@@ -90,7 +104,7 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 
 This extension contributes the following settings:
 
-* `sasDatasetViewer.enableDebugLogging`: Enable debug logging output (default: false)
+- `sasDatasetViewer.enableDebugLogging`: Enable debug logging output (default: false)
 
 ## 🐛 Known Issues
 
@@ -100,6 +114,7 @@ This extension contributes the following settings:
 ## 📝 Release Notes
 
 ### 1.0.0
+
 - Initial release
 - Full dataset viewing and filtering capabilities
 - KEEP/DROP variable selection
