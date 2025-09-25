@@ -163,6 +163,7 @@ export function getPaginationHTML(metadata: any): string {
                 cursor: help;
                 position: relative;
                 display: inline-block;
+                padding-right: 8px; /* Add some padding since we removed the type badge */
             }
 
             /* Simplified tooltip for better performance */
@@ -201,18 +202,6 @@ export function getPaginationHTML(metadata: any): string {
                 margin-top: -1px;
             }
 
-            .variable-type {
-                font-size: 10px;
-                color: var(--vscode-descriptionForeground);
-                padding: 2px 6px;
-                background: var(--vscode-badge-background);
-                border-radius: 10px;
-                min-width: 20px;
-                text-align: center;
-                flex-shrink: 0;
-                margin-left: auto;
-                z-index: 1;
-            }
 
             .content-area {
                 flex: 1;
@@ -746,7 +735,7 @@ export function getPaginationHTML(metadata: any): string {
                     span.className = 'variable-text';
                     span.setAttribute('data-name', variable.name);
                     span.setAttribute('data-label', variable.label || '');
-                    
+
                     // Create tooltip content with proper escaping
                     let tooltip = 'Variable: ' + variable.name;
                     if (variable.label && variable.label !== variable.name) {
@@ -759,23 +748,18 @@ export function getPaginationHTML(metadata: any): string {
                     if (variable.length) {
                         tooltip += '\\nLength: ' + variable.length;
                     }
-                    
+
                     // Use both title attribute (for native tooltip) and data-tooltip (for CSS tooltip)
                     span.setAttribute('title', tooltip);
                     span.setAttribute('data-tooltip', tooltip);
                     span.innerHTML = getVariableIcon(variable) + ' ' + variable.name;
-                    
+
                     // Ensure span is interactive
                     span.style.pointerEvents = 'auto';
                     span.style.cursor = 'help';
-                    
-                    const typeSpan = document.createElement('span');
-                    typeSpan.className = 'variable-type';
-                    typeSpan.textContent = variable.type.charAt(0).toUpperCase();
-                    
+
                     item.appendChild(checkbox);
                     item.appendChild(span);
-                    item.appendChild(typeSpan);
                     
                     variablesContainer.appendChild(item);
                     
