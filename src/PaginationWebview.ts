@@ -517,6 +517,98 @@ export function getPaginationHTML(metadata: any): string {
                 to { opacity: 1; }
             }
 
+            /* Modal styles for metadata popup */
+            .modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.6);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.2s ease-in;
+            }
+
+            .modal-content {
+                background: var(--vscode-editor-background);
+                border: 1px solid var(--vscode-panel-border);
+                border-radius: 6px;
+                padding: 20px;
+                max-width: 90%;
+                max-height: 80vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            }
+
+            .modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 20px;
+                padding-bottom: 10px;
+                border-bottom: 1px solid var(--vscode-panel-border);
+            }
+
+            .modal-header h2 {
+                margin: 0;
+                font-size: 18px;
+                font-weight: 600;
+            }
+
+            .modal-body {
+                overflow: auto;
+                flex: 1;
+            }
+
+            .metadata-table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 13px;
+            }
+
+            .metadata-table th {
+                background: var(--vscode-list-hoverBackground);
+                border: 1px solid var(--vscode-panel-border);
+                padding: 10px;
+                text-align: left;
+                font-weight: 600;
+                position: sticky;
+                top: 0;
+                z-index: 1;
+            }
+
+            .metadata-table td {
+                border: 1px solid var(--vscode-panel-border);
+                padding: 8px 10px;
+                max-width: 300px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .metadata-table tr:hover {
+                background: var(--vscode-list-hoverBackground);
+            }
+
+            .close-btn {
+                padding: 6px 12px;
+                background: var(--vscode-button-background);
+                color: var(--vscode-button-foreground);
+                border: none;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 12px;
+            }
+
+            .close-btn:hover {
+                background: var(--vscode-button-hoverBackground);
+            }
+
             .error {
                 text-align: center;
                 padding: 40px;
@@ -535,6 +627,7 @@ export function getPaginationHTML(metadata: any): string {
             <div class="pagination-info">
                 <span id="current-range">Loading...</span>
             </div>
+            <button class="btn" id="metadata-btn" style="margin-left: auto;">📊 Metadata</button>
         </div>
 
         <div class="main-container">
@@ -661,6 +754,7 @@ export function getPaginationHTML(metadata: any): string {
             const header = document.getElementById('table-header').querySelector('tr');
             const loadingMessage = document.getElementById('loading-message');
             const errorMessage = document.getElementById('error-message');
+            const metadataBtn = document.getElementById('metadata-btn');
             
             const firstBtn = document.getElementById('first-btn');
             const prevBtn = document.getElementById('prev-btn');
@@ -766,7 +860,74 @@ export function getPaginationHTML(metadata: any): string {
                 });
             }
 
+            function showMetadata() {
+                // Create metadata table HTML
+                const metadataHTML = '<table class="metadata-table">' +
+                    '<thead><tr>' +
+                    '<th style="width: 30px;">#</th>' +
+                    '<th>Variable</th>' +
+                    '<th>Type</th>' +
+                    '<th>Label</th>' +
+                    '<th>Format</th>' +
+                    '<th>Length</th>' +
+                    '</tr></thead><tbody>' +
+                    allVariables.map((v, index) =>
+                        '<tr>' +
+                        '<td>' + (index + 1) + '</td>' +
+                        '<td>' + getVariableIcon(v) + ' ' + v.name + '</td>' +
+                        '<td>' + v.type + '</td>' +
+                        '<td>' + (v.label || '-') + '</td>' +
+                        '<td>' + (v.format || '-') + '</td>' +
+                        '<td>' + (v.length || '-') + '</td>' +
+                        '</tr>'
+                    ).join('') +
+                    '</tbody></table>';
+
+                // Create modal overlay
+                const overlay = document.createElement('div');
+                overlay.className = 'modal-overlay';
+
+                // Create modal content
+                const modal = document.createElement('div');
+                modal.className = 'modal-content';
+
+                modal.innerHTML =
+                    '<div class="modal-header">' +
+                    '<h2>📊 Variable Metadata - ' + allVariables.length + ' Variables</h2>' +
+                    '<button class="close-btn" id="close-metadata-btn">✕ Close</button>' +
+                    '</div>' +
+                    '<div class="modal-body">' + metadataHTML + '</div>';
+
+                overlay.appendChild(modal);
+                document.body.appendChild(overlay);
+
+                // Close handlers
+                const closeBtn = modal.querySelector('#close-metadata-btn');
+                closeBtn.addEventListener('click', () => {
+                    document.body.removeChild(overlay);
+                });
+
+                // Close on overlay click
+                overlay.addEventListener('click', (e) => {
+                    if (e.target === overlay) {
+                        document.body.removeChild(overlay);
+                    }
+                });
+
+                // Close on Escape key
+                const escapeHandler = (e) => {
+                    if (e.key === 'Escape') {
+                        document.body.removeChild(overlay);
+                        document.removeEventListener('keydown', escapeHandler);
+                    }
+                };
+                document.addEventListener('keydown', escapeHandler);
+            }
+
             function setupEventListeners() {
+                // Metadata button
+                metadataBtn.addEventListener('click', showMetadata);
+
                 firstBtn.addEventListener('click', () => goToPage(1));
                 prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
                 nextBtn.addEventListener('click', () => goToPage(currentPage + 1));
