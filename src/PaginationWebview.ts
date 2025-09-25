@@ -999,8 +999,8 @@ export function getPaginationHTML(metadata: any): string {
                 });
 
                 // KEEP and DROP functionality
-                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
-                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const keepInput = document.getElementById('keep-input');
+                const dropInput = document.getElementById('drop-input');
                 const applyKeepBtn = document.getElementById('apply-keep-btn');
                 const applyDropBtn = document.getElementById('apply-drop-btn');
 
@@ -1158,7 +1158,7 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function applyKeepVariables() {
-                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                const keepInput = document.getElementById('keep-input');
                 const keepText = keepInput.value.trim();
 
                 if (!keepText) {
@@ -1166,21 +1166,21 @@ export function getPaginationHTML(metadata: any): string {
                 }
 
                 // Clear DROP input when KEEP is applied
-                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const dropInput = document.getElementById('drop-input');
                 dropInput.value = '';
 
                 // Parse variable names (comma-separated, case-insensitive)
                 const keepVarNames = keepText.split(',').map(v => v.trim().toUpperCase()).filter(v => v);
 
                 // Create a case-insensitive lookup map
-                const variableMap = new Map<string, string>();
+                const variableMap = new Map();
                 allVariables.forEach(v => {
                     variableMap.set(v.name.toUpperCase(), v.name);
                 });
 
                 // Find matching variables (case-insensitive)
-                const validKeepVars = new Set<string>();
-                const notFound: string[] = [];
+                const validKeepVars = new Set();
+                const notFound = [];
 
                 keepVarNames.forEach(varName => {
                     if (variableMap.has(varName)) {
@@ -1207,7 +1207,7 @@ export function getPaginationHTML(metadata: any): string {
 
                 if (validKeepVars.size > 0) {
                     // Update all checkboxes based on KEEP list
-                    document.querySelectorAll('.variable-checkbox').forEach((cb: HTMLInputElement) => {
+                    document.querySelectorAll('.variable-checkbox').forEach((cb) => {
                         const varName = cb.dataset.variable;
                         cb.checked = validKeepVars.has(varName);
                     });
@@ -1220,7 +1220,7 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function applyDropVariables() {
-                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const dropInput = document.getElementById('drop-input');
                 const dropText = dropInput.value.trim();
 
                 if (!dropText) {
@@ -1228,21 +1228,21 @@ export function getPaginationHTML(metadata: any): string {
                 }
 
                 // Clear KEEP input when DROP is applied
-                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
+                const keepInput = document.getElementById('keep-input');
                 keepInput.value = '';
 
                 // Parse variable names (comma-separated, case-insensitive)
                 const dropVarNames = dropText.split(',').map(v => v.trim().toUpperCase()).filter(v => v);
 
                 // Create a case-insensitive lookup map
-                const variableMap = new Map<string, string>();
+                const variableMap = new Map();
                 allVariables.forEach(v => {
                     variableMap.set(v.name.toUpperCase(), v.name);
                 });
 
                 // Find matching variables to drop (case-insensitive)
-                const validDropVars = new Set<string>();
-                const notFound: string[] = [];
+                const validDropVars = new Set();
+                const notFound = [];
 
                 dropVarNames.forEach(varName => {
                     if (variableMap.has(varName)) {
@@ -1268,7 +1268,7 @@ export function getPaginationHTML(metadata: any): string {
                 }
 
                 // Select all variables EXCEPT those in the DROP list
-                document.querySelectorAll('.variable-checkbox').forEach((cb: HTMLInputElement) => {
+                document.querySelectorAll('.variable-checkbox').forEach((cb) => {
                     const varName = cb.dataset.variable;
                     cb.checked = !validDropVars.has(varName);
                 });
@@ -1438,8 +1438,8 @@ export function getPaginationHTML(metadata: any): string {
 
             function selectAllVariables() {
                 // Clear KEEP/DROP inputs when Select All is used
-                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
-                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const keepInput = document.getElementById('keep-input');
+                const dropInput = document.getElementById('drop-input');
                 if (keepInput) keepInput.value = '';
                 if (dropInput) dropInput.value = '';
 
@@ -1451,8 +1451,8 @@ export function getPaginationHTML(metadata: any): string {
 
             function deselectAllVariables() {
                 // Clear KEEP/DROP inputs when Clear All is used
-                const keepInput = document.getElementById('keep-input') as HTMLInputElement;
-                const dropInput = document.getElementById('drop-input') as HTMLInputElement;
+                const keepInput = document.getElementById('keep-input');
+                const dropInput = document.getElementById('drop-input');
                 if (keepInput) keepInput.value = '';
                 if (dropInput) dropInput.value = '';
 
