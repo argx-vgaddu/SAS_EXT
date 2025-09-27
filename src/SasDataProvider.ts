@@ -4,6 +4,7 @@ import { spawn } from 'child_process';
 import { SASWebviewPanel } from './WebviewPanel';
 import { SASMetadata, SASDataResponse, SASDataRequest } from './types';
 import { Logger } from './utils/logger';
+import { EnhancedSASReader, DatasetMetadata, DataRow } from './readers/EnhancedSASReader';
 
 /**
  * VS Code custom editor provider for SAS dataset files (.sas7bdat)
@@ -16,7 +17,7 @@ export class SASDatasetProvider implements vscode.CustomReadonlyEditorProvider<S
     constructor(
         private readonly context: vscode.ExtensionContext
     ) {
-        this.logger.debug('SASDatasetProvider initialized');
+        this.logger.debug('SASDatasetProvider V2 initialized - TypeScript mode');
     }
 
     /**
@@ -51,6 +52,8 @@ export class SASDatasetProvider implements vscode.CustomReadonlyEditorProvider<S
  */
 export class SASDatasetDocument implements vscode.CustomDocument {
     private readonly logger = Logger.createScoped('SASDatasetDocument');
+    private reader: EnhancedSASReader | null = null;
+    private usePythonFallback = false;
 
     private constructor(
         public readonly uri: vscode.Uri,
@@ -75,16 +78,60 @@ export class SASDatasetDocument implements vscode.CustomDocument {
      */
     private async loadMetadata(): Promise<void> {
         try {
-            this.logger.info(`Loading metadata for: ${this.uri.fsPath}`);
-            this.metadata = await this.executePythonCommand('metadata', this.uri.fsPath);
-            this.logger.info('Metadata loaded successfully', {
-                totalRows: this.metadata?.total_rows,
-                totalVariables: this.metadata?.total_variables
-            });
+            this.logger.info(`Loading metadata using TypeScript reader: ${this.uri.fsPath}`);
+
+            // Try TypeScript reader first
+            try {
+                this.reader = new EnhancedSASReader(this.uri.fsPath);
+                const tsMetadata = await this.reader.getMetadata();
+
+                // Convert to existing format for compatibility
+                this.metadata = this.convertMetadata(tsMetadata);
+
+                this.logger.info('Metadata loaded successfully with TypeScript reader', {
+                    totalRows: this.metadata?.total_rows,
+                    totalVariables: this.metadata?.total_variables,
+                    mode: 'TypeScript'
+                });
+
+            } catch (tsError) {
+                this.logger.warn('TypeScript reader failed, falling back to Python', tsError);
+                this.usePythonFallback = true;
+
+                // Fallback to Python
+                this.metadata = await this.executePythonCommand('metadata', this.uri.fsPath);
+
+                this.logger.info('Metadata loaded successfully with Python fallback', {
+                    totalRows: this.metadata?.total_rows,
+                    totalVariables: this.metadata?.total_variables,
+                    mode: 'Python'
+                });
+            }
+
         } catch (error) {
             this.logger.error('Failed to load metadata', error);
             throw error;
         }
+    }
+
+    /**
+     * Converts TypeScript reader metadata to existing format
+     */
+    private convertMetadata(tsMetadata: DatasetMetadata): SASMetadata {
+        return {
+            total_rows: tsMetadata.rowCount,
+            total_variables: tsMetadata.columnCount,
+            variables: tsMetadata.variables.map(v => ({
+                name: v.name,
+                type: v.type === 'string' ? 'character' : 'numeric',
+                label: v.label,
+                format: v.format || '',
+                length: v.length,
+                dtype: v.type
+            })),
+            file_path: this.uri.fsPath,
+            dataset_label: tsMetadata.label || path.basename(this.uri.fsPath, '.sas7bdat')
+        };
     }
 
     /**
@@ -95,9 +142,49 @@ export class SASDatasetDocument implements vscode.CustomDocument {
             startRow: request.startRow,
             numRows: request.numRows,
             selectedVarsCount: request.selectedVars?.length || 0,
-            hasWhereClause: !!request.whereClause
+            hasWhereClause: !!request.whereClause,
+            mode: this.usePythonFallback ? 'Python' : 'TypeScript'
         });
 
+        if (!this.usePythonFallback && this.reader) {
+            // Use TypeScript reader
+            try {
+                const startTime = Date.now();
+
+                // Get data with TypeScript reader
+                let data: DataRow[];
+
+                if (request.whereClause) {
+                    // Apply WHERE clause filtering
+                    data = await this.reader.getFilteredData(request.whereClause);
+                } else {
+                    data = await this.reader.getData({
+                        startRow: request.startRow,
+                        numRows: request.numRows,
+                        variables: request.selectedVars
+                    });
+                }
+
+                const elapsed = Date.now() - startTime;
+                this.logger.debug(`Data retrieved in ${elapsed}ms using TypeScript reader`);
+
+                // Convert to existing response format
+                return {
+                    data: data,
+                    total_rows: this.metadata?.total_rows || 0,
+                    filtered_rows: data.length,
+                    start_row: request.startRow,
+                    returned_rows: data.length,
+                    columns: request.selectedVars || this.metadata?.variables.map(v => v.name) || []
+                };
+
+            } catch (tsError) {
+                this.logger.warn('TypeScript reader failed for data, falling back to Python', tsError);
+                // Fall through to Python
+            }
+        }
+
+        // Use Python fallback
         const args = [
             'data',
             request.filePath,
@@ -111,6 +198,67 @@ export class SASDatasetDocument implements vscode.CustomDocument {
     }
 
     /**
+     * Gets unique values for a column (new feature)
+     */
+    public async getUniqueValues(columnName: string, includeCount: boolean = false): Promise<any[]> {
+        if (!this.usePythonFallback && this.reader) {
+            return await this.reader.getUniqueValues(columnName, includeCount);
+        }
+
+        // Python fallback - implement manually
+        const allData = await this.getData({
+            filePath: this.uri.fsPath,
+            startRow: 0,
+            numRows: this.metadata?.total_rows || 10000,
+            selectedVars: [columnName]
+        });
+
+        const uniqueMap = new Map<any, number>();
+        for (const row of allData.data) {
+            const value = row[columnName];
+            uniqueMap.set(value, (uniqueMap.get(value) || 0) + 1);
+        }
+
+        if (includeCount) {
+            return Array.from(uniqueMap.entries()).map(([value, count]) => ({ value, count }));
+        } else {
+            return Array.from(uniqueMap.keys());
+        }
+    }
+
+    /**
+     * Gets unique combinations for multiple columns (new feature)
+     */
+    public async getUniqueCombinations(columnNames: string[], includeCount: boolean = false): Promise<any[]> {
+        if (!this.usePythonFallback && this.reader) {
+            return await this.reader.getUniqueCombinations(columnNames, includeCount);
+        }
+
+        // Python fallback - implement manually
+        const allData = await this.getData({
+            filePath: this.uri.fsPath,
+            startRow: 0,
+            numRows: this.metadata?.total_rows || 10000,
+            selectedVars: columnNames
+        });
+
+        const uniqueMap = new Map<string, any>();
+
+        for (const row of allData.data) {
+            const values = columnNames.map(col => row[col]);
+            const key = JSON.stringify(values);
+
+            if (!uniqueMap.has(key)) {
+                uniqueMap.set(key, includeCount ? { ...row, _count: 1 } : row);
+            } else if (includeCount) {
+                uniqueMap.get(key)._count++;
+            }
+        }
+
+        return Array.from(uniqueMap.values());
+    }
+
+    /**
      * Executes a Python command and returns the parsed result
      */
     private async executePythonCommand(command: string, ...args: string[]): Promise<any> {
@@ -118,7 +266,7 @@ export class SASDatasetDocument implements vscode.CustomDocument {
             const pythonScript = path.join(this.context.extensionPath, 'python', 'sas_reader.py');
             const fullArgs = [pythonScript, command, ...args];
 
-            this.logger.debug(`Executing Python command: py ${fullArgs.join(' ')}`);
+            this.logger.debug(`Executing Python fallback: py ${fullArgs.join(' ')}`);
 
             const pythonProcess = spawn('py', fullArgs, {
                 cwd: this.context.extensionPath
@@ -173,6 +321,9 @@ export class SASDatasetDocument implements vscode.CustomDocument {
      */
     dispose(): void {
         this.logger.debug(`Disposing document: ${this.uri.fsPath}`);
-        // Clean up resources if needed
+        if (this.reader) {
+            this.reader.dispose();
+            this.reader = null;
+        }
     }
 }

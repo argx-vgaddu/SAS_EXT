@@ -2,7 +2,7 @@
   "name": "sas-dataset-viewer",
   "displayName": "SAS Dataset Viewer",
   "description": "View, filter, and analyze SAS7BDAT dataset files directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "publisher": "anovagroups",
   "icon": "icon.png",
   "galleryBanner": {

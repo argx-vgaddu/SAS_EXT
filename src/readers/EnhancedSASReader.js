@@ -187,7 +187,7 @@ var EnhancedSASReader = /** @class */ (function () {
                     case 1:
                         _a.dataCache = _b.sent();
                         _b.label = 2;
-                    case 2: return [2 /*return*/, this.dataCache];
+                    case 2: return [2 /*return*/, this.dataCache || []];
                 }
             });
         });

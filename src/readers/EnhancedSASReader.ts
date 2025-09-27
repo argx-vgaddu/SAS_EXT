@@ -132,7 +132,7 @@ export class EnhancedSASReader {
         if (!this.dataCache) {
             this.dataCache = await this.dataset.getData({ filterColumns: [] });
         }
-        return this.dataCache;
+        return this.dataCache || [];
     }
 
     /**
