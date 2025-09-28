@@ -54,6 +54,11 @@
         "command": "sasDatasetViewer.openDataset",
         "title": "Open SAS Dataset",
         "category": "SAS"
+      },
+      {
+        "command": "sasDatasetViewer.showOutput",
+        "title": "Show Output",
+        "category": "SAS Dataset Viewer"
       }
     ],
     "configuration": {

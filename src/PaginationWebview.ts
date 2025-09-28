@@ -39,8 +39,6 @@ export function getPaginationHTML(metadata: any): string {
                 height: 100vh;
                 display: flex;
                 flex-direction: column;
-                /* Performance optimization */
-                contain: layout style;
             }
 
             .main-container {
@@ -60,10 +58,6 @@ export function getPaginationHTML(metadata: any): string {
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
-                position: relative;
-                /* Performance: isolate sidebar rendering */
-                contain: layout style paint;
-                will-change: transform;
             }
 
             .sidebar-header {
@@ -116,12 +110,7 @@ export function getPaginationHTML(metadata: any): string {
             .variables-container {
                 flex: 1;
                 overflow-y: auto;
-                overflow-x: visible;
                 padding: 8px;
-                position: relative;
-                /* Performance: optimize scrolling */
-                will-change: scroll-position;
-                contain: layout style paint;
             }
 
             .variable-item {
@@ -134,7 +123,6 @@ export function getPaginationHTML(metadata: any): string {
                 cursor: pointer;
                 user-select: none;
                 margin-bottom: 2px;
-                position: relative;
             }
 
             .variable-item:hover {
@@ -143,16 +131,6 @@ export function getPaginationHTML(metadata: any): string {
 
             .variable-item input[type="checkbox"] {
                 cursor: pointer;
-                flex-shrink: 0;
-                z-index: 2;
-                width: 14px !important;
-                height: 14px !important;
-                margin: 0;
-                margin-right: 4px;
-                vertical-align: middle;
-                opacity: 1 !important;
-                visibility: visible !important;
-                display: inline-block !important;
             }
 
             .variable-text {
@@ -161,15 +139,12 @@ export function getPaginationHTML(metadata: any): string {
                 text-overflow: ellipsis;
                 white-space: nowrap;
                 cursor: help;
-                position: relative;
-                display: inline-block;
-                padding-right: 8px; /* Add some padding since we removed the type badge */
             }
 
-            /* Simplified tooltip for better performance */
+            /* Custom tooltip styles for sidebar variables */
             .variable-text[data-tooltip]:hover::after {
                 content: attr(data-tooltip);
-                position: absolute;
+                position: fixed;
                 background: var(--vscode-editorHoverWidget-background);
                 color: var(--vscode-editorHoverWidget-foreground);
                 border: 1px solid var(--vscode-editorHoverWidget-border);
@@ -178,30 +153,28 @@ export function getPaginationHTML(metadata: any): string {
                 font-size: 12px;
                 white-space: pre-line;
                 z-index: 10000;
+                min-width: 200px;
                 max-width: 400px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.3);
                 pointer-events: none;
-                top: 100%;
-                left: 0;
-                margin-top: 5px;
-                /* Performance: use transform for GPU acceleration */
-                transform: translateZ(0);
+                transform: translateY(5px);
             }
 
-            /* Arrow indicator for tooltip */
-            .variable-text[data-tooltip]:hover::before {
-                content: '';
-                position: absolute;
-                top: 100%;
-                left: 10px;
-                width: 0;
-                height: 0;
-                border-left: 6px solid transparent;
-                border-right: 6px solid transparent;
-                border-bottom: 6px solid var(--vscode-editorHoverWidget-border);
-                z-index: 10001;
-                margin-top: -1px;
+            .variable-text[data-tooltip] {
+                position: relative;
             }
 
+            .variable-item {
+                position: relative;
+            }
+
+            /* JavaScript will set these dynamically */
+            .variable-text[data-tooltip]:hover::after {
+                left: var(--tooltip-x, 350px);
+                top: var(--tooltip-y, 50%);
+            }
+
+            /* Type badge removed - using icons instead */
 
             .content-area {
                 flex: 1;
@@ -237,9 +210,6 @@ export function getPaginationHTML(metadata: any): string {
                 border: 1px solid var(--vscode-panel-border);
                 border-radius: 4px;
                 margin-bottom: 15px;
-                /* Performance: isolate table rendering */
-                contain: layout style paint;
-                will-change: contents;
             }
 
             table {
@@ -278,66 +248,14 @@ export function getPaginationHTML(metadata: any): string {
                 border-radius: 4px;
                 font-size: 12px;
                 white-space: pre-line;
-                z-index: 10000;
-                min-width: 250px;
+                z-index: 1000;
+                min-width: 200px;
                 max-width: 400px;
-                width: max-content;
                 box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 pointer-events: none;
                 top: 100%;
-                left: 50%;
-                transform: translateX(-50%);
-                margin-top: 5px;
-            }
-            
-            /* Ensure tooltip doesn't go off-screen on the left */
-            th:first-child[data-tooltip]:hover::after,
-            th:nth-child(2)[data-tooltip]:hover::after,
-            th:nth-child(3)[data-tooltip]:hover::after {
                 left: 0;
-                transform: translateX(0);
-            }
-            
-            /* Ensure tooltip doesn't go off-screen on the right */
-            th:nth-last-child(1)[data-tooltip]:hover::after,
-            th:nth-last-child(2)[data-tooltip]:hover::after,
-            th:nth-last-child(3)[data-tooltip]:hover::after {
-                left: auto;
-                right: 0;
-                transform: translateX(0);
-            }
-            
-            /* Arrow indicator for table header tooltips */
-            th[data-tooltip]:hover::before {
-                content: '';
-                position: absolute;
-                top: 100%;
-                left: 50%;
-                transform: translateX(-50%);
-                width: 0;
-                height: 0;
-                border-left: 6px solid transparent;
-                border-right: 6px solid transparent;
-                border-bottom: 6px solid var(--vscode-editorHoverWidget-border);
-                z-index: 10001;
-                margin-top: -1px;
-            }
-            
-            /* Adjust arrow for left-aligned tooltips */
-            th:first-child[data-tooltip]:hover::before,
-            th:nth-child(2)[data-tooltip]:hover::before,
-            th:nth-child(3)[data-tooltip]:hover::before {
-                left: 20px;
-                transform: translateX(0);
-            }
-            
-            /* Adjust arrow for right-aligned tooltips */
-            th:nth-last-child(1)[data-tooltip]:hover::before,
-            th:nth-last-child(2)[data-tooltip]:hover::before,
-            th:nth-last-child(3)[data-tooltip]:hover::before {
-                left: auto;
-                right: 20px;
-                transform: translateX(0);
+                margin-top: 5px;
             }
 
             td {
@@ -455,158 +373,8 @@ export function getPaginationHTML(metadata: any): string {
             .loading {
                 text-align: center;
                 padding: 40px;
+                font-style: italic;
                 color: var(--vscode-descriptionForeground);
-            }
-
-            /* Custom spinner animation */
-            .spinner {
-                width: 40px;
-                height: 40px;
-                margin: 20px auto;
-                border: 4px solid var(--vscode-panel-border);
-                border-top: 4px solid var(--vscode-focusBorder);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-            }
-
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-
-            /* Skeleton loader for table rows */
-            .skeleton-row {
-                display: table-row;
-                animation: pulse 1.5s ease-in-out infinite;
-            }
-
-            .skeleton-cell {
-                display: table-cell;
-                padding: 8px;
-                border: 1px solid var(--vscode-panel-border);
-            }
-
-            .skeleton-content {
-                height: 14px;
-                background: linear-gradient(90deg,
-                    var(--vscode-panel-border) 25%,
-                    var(--vscode-badge-background) 50%,
-                    var(--vscode-panel-border) 75%);
-                background-size: 200% 100%;
-                animation: shimmer 1.5s infinite;
-                border-radius: 2px;
-            }
-
-            @keyframes shimmer {
-                0% { background-position: 200% 0; }
-                100% { background-position: -200% 0; }
-            }
-
-            @keyframes pulse {
-                0%, 100% { opacity: 1; }
-                50% { opacity: 0.6; }
-            }
-
-            /* Smooth fade transitions */
-            .fade-in {
-                animation: fadeIn 0.3s ease-in;
-            }
-
-            @keyframes fadeIn {
-                from { opacity: 0; }
-                to { opacity: 1; }
-            }
-
-            /* Modal styles for metadata popup */
-            .modal-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0, 0, 0, 0.6);
-                z-index: 10000;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                animation: fadeIn 0.2s ease-in;
-            }
-
-            .modal-content {
-                background: var(--vscode-editor-background);
-                border: 1px solid var(--vscode-panel-border);
-                border-radius: 6px;
-                padding: 20px;
-                max-width: 90%;
-                max-height: 80vh;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-            }
-
-            .modal-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 20px;
-                padding-bottom: 10px;
-                border-bottom: 1px solid var(--vscode-panel-border);
-            }
-
-            .modal-header h2 {
-                margin: 0;
-                font-size: 18px;
-                font-weight: 600;
-            }
-
-            .modal-body {
-                overflow: auto;
-                flex: 1;
-            }
-
-            .metadata-table {
-                width: 100%;
-                border-collapse: collapse;
-                font-size: 13px;
-            }
-
-            .metadata-table th {
-                background: var(--vscode-list-hoverBackground);
-                border: 1px solid var(--vscode-panel-border);
-                padding: 10px;
-                text-align: left;
-                font-weight: 600;
-                position: sticky;
-                top: 0;
-                z-index: 1;
-            }
-
-            .metadata-table td {
-                border: 1px solid var(--vscode-panel-border);
-                padding: 8px 10px;
-                max-width: 300px;
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
-            }
-
-            .metadata-table tr:hover {
-                background: var(--vscode-list-hoverBackground);
-            }
-
-            .close-btn {
-                padding: 6px 12px;
-                background: var(--vscode-button-background);
-                color: var(--vscode-button-foreground);
-                border: none;
-                border-radius: 3px;
-                cursor: pointer;
-                font-size: 12px;
-            }
-
-            .close-btn:hover {
-                background: var(--vscode-button-hoverBackground);
             }
 
             .error {
@@ -617,26 +385,126 @@ export function getPaginationHTML(metadata: any): string {
                 border-radius: 4px;
                 margin: 20px;
             }
+
+            /* Metadata Modal Styles */
+            .modal {
+                display: none;
+                position: fixed;
+                z-index: 1000;
+                left: 0;
+                top: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0, 0, 0, 0.6);
+            }
+
+            .modal-content {
+                background-color: var(--vscode-editor-background);
+                margin: 5% auto;
+                padding: 0;
+                border: 1px solid var(--vscode-panel-border);
+                border-radius: 6px;
+                width: 80%;
+                max-width: 800px;
+                max-height: 80vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+
+            .modal-header {
+                padding: 15px 20px;
+                background: var(--vscode-sideBarSectionHeader-background);
+                border-bottom: 1px solid var(--vscode-panel-border);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+
+            .modal-title {
+                font-size: 16px;
+                font-weight: 600;
+            }
+
+            .modal-close {
+                font-size: 24px;
+                font-weight: bold;
+                cursor: pointer;
+                background: none;
+                border: none;
+                color: var(--vscode-foreground);
+                opacity: 0.6;
+                padding: 0;
+                width: 30px;
+                height: 30px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .modal-close:hover {
+                opacity: 1;
+            }
+
+            .modal-body {
+                padding: 20px;
+                overflow-y: auto;
+                flex: 1;
+            }
+
+            .metadata-section {
+                margin-bottom: 20px;
+            }
+
+            .metadata-section h3 {
+                font-size: 14px;
+                font-weight: 600;
+                margin-bottom: 10px;
+                color: var(--vscode-foreground);
+            }
+
+            .metadata-table {
+                width: 100%;
+                font-size: 12px;
+            }
+
+            .metadata-table tr {
+                border-bottom: 1px solid var(--vscode-panel-border);
+            }
+
+            .metadata-table td {
+                padding: 8px 12px;
+            }
+
+            .metadata-table td:first-child {
+                font-weight: 500;
+                color: var(--vscode-descriptionForeground);
+                width: 150px;
+            }
         </style>
     </head>
     <body>
         <div class="header">
             <div class="dataset-info">
-                <strong>${fileName}</strong> - <span id="total-rows-display">${metadata.total_rows.toLocaleString()}</span> rows, ${metadata.total_variables} variables
+                <strong>${fileName}</strong>${metadata.dataset_label && metadata.dataset_label !== fileName ? ` - "${metadata.dataset_label}"` : ''}
+                <br>
+                <span style="font-size: 12px; color: var(--vscode-descriptionForeground);">
+                    <span id="total-rows-display">${metadata.total_rows.toLocaleString()}</span> rows, ${metadata.total_variables} variables
+                </span>
             </div>
-            <div class="pagination-info">
-                <span id="current-range">Loading...</span>
-            </div>
-            <div style="margin-left: auto; display: flex; gap: 10px; align-items: center;">
-                <div class="display-mode" style="display: flex; align-items: center; gap: 5px;">
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div class="display-mode" style="display: flex; align-items: center; gap: 8px;">
                     <label style="font-size: 12px;">Show:</label>
-                    <select id="display-mode" class="display-select" style="padding: 2px 4px; font-size: 12px;">
+                    <select id="display-mode" class="display-select" style="padding: 2px 6px; font-size: 12px;">
                         <option value="name" selected>Names</option>
                         <option value="label">Labels</option>
                         <option value="both">Both</option>
                     </select>
                 </div>
-                <button class="btn" id="metadata-btn">📊 Metadata</button>
+                <button class="btn" id="metadata-btn" style="padding: 4px 12px; font-size: 12px;" title="View variable metadata">📊 Variables</button>
+                <div class="pagination-info">
+                    <span id="current-range">Loading...</span>
+                </div>
             </div>
         </div>
 
@@ -645,36 +513,38 @@ export function getPaginationHTML(metadata: any): string {
                 <div class="sidebar-header">
                     <div class="sidebar-title">Dataset Variables</div>
                     <div class="dataset-label">${metadata.dataset_label || fileName}</div>
-
+                    
                     <div class="variable-controls">
                         <div class="selected-count" id="selected-count">33 selected</div>
                     </div>
 
-                    <!-- KEEP/DROP section at top -->
-                    <div style="margin-top: 12px; padding: 10px; background: var(--vscode-editor-background); border-radius: 4px;">
-                        <div style="margin-bottom: 10px;">
-                            <label for="keep-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold; color: var(--vscode-foreground);">KEEP (comma-separated):</label>
-                            <input type="text" id="keep-input"
-                                   placeholder="e.g., USUBJID, AGE, WEIGHT"
-                                   style="width: 100%; padding: 4px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px;"
-                                   title="Keep only these variables (comma-separated, case-insensitive)">
-                            <button class="btn" id="apply-keep-btn" style="width: 100%; margin-top: 4px; font-size: 11px;">Apply Keep</button>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px;">Select All</button>
+                        <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px;">Clear All</button>
+                    </div>
+
+                    <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vscode-panel-border);">
+                        <div style="margin-bottom: 8px;">
+                            <label style="font-size: 11px; display: block; margin-bottom: 4px;">KEEP variables:</label>
+                            <div style="display: flex; gap: 4px;">
+                                <input type="text" id="keep-input" class="variable-input"
+                                       placeholder="e.g., VAR1 VAR2 VAR3"
+                                       title="Space-separated list of variables to keep"
+                                       style="flex: 1; padding: 3px 6px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 2px;">
+                                <button class="btn" id="keep-btn" style="padding: 3px 8px; font-size: 11px; min-width: 50px;">Keep</button>
+                            </div>
                         </div>
 
                         <div>
-                            <label for="drop-input" style="display: block; font-size: 11px; margin-bottom: 4px; font-weight: bold; color: var(--vscode-foreground);">DROP (comma-separated):</label>
-                            <input type="text" id="drop-input"
-                                   placeholder="e.g., DESC_LONG, NOTE, CHAR_MIXED"
-                                   style="width: 100%; padding: 4px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px;"
-                                   title="Drop these variables (comma-separated, case-insensitive)">
-                            <button class="btn" id="apply-drop-btn" style="width: 100%; margin-top: 4px; font-size: 11px;">Apply Drop</button>
+                            <label style="font-size: 11px; display: block; margin-bottom: 4px;">DROP variables:</label>
+                            <div style="display: flex; gap: 4px;">
+                                <input type="text" id="drop-input" class="variable-input"
+                                       placeholder="e.g., VAR1 VAR2 VAR3"
+                                       title="Space-separated list of variables to drop"
+                                       style="flex: 1; padding: 3px 6px; font-size: 11px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 2px;">
+                                <button class="btn" id="drop-btn" style="padding: 3px 8px; font-size: 11px; min-width: 50px;">Drop</button>
+                            </div>
                         </div>
-                    </div>
-
-                    <!-- Select/Clear buttons just above variable list -->
-                    <div style="display: flex; gap: 8px; margin-top: 12px;">
-                        <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px;">Select All</button>
-                        <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px;">Clear All</button>
                     </div>
                 </div>
                 
@@ -687,9 +557,9 @@ export function getPaginationHTML(metadata: any): string {
                 <div class="filter-section">
                     <div style="display: flex; align-items: center; flex: 1; gap: 10px;">
                         <label for="where-input">WHERE:</label>
-                        <input type="text" id="where-input" class="where-input"
-                               placeholder="e.g., age > 30 AND country = 'USA' (case-insensitive)"
-                               title="Filter using WHERE conditions. Variable names are case-insensitive. Supports AND/OR or &/| operators">
+                        <input type="text" id="where-input" class="where-input" 
+                               placeholder="e.g., AGE > 30 and COUNTRY = 'USA'" 
+                               title="Filter the dataset using SAS-style WHERE conditions">
                         <button class="btn" id="apply-filter-btn">Apply Filter</button>
                         <button class="btn" id="clear-filter-btn">Clear</button>
                     </div>
@@ -699,10 +569,7 @@ export function getPaginationHTML(metadata: any): string {
                 </div>
 
                 <div class="table-container">
-                    <div id="loading-message" class="loading">
-                        <div class="spinner"></div>
-                        <div id="loading-text">Loading data...</div>
-                    </div>
+                    <div id="loading-message" class="loading">Loading data...</div>
                     <div id="error-message" class="error" style="display: none;"></div>
                     <table id="data-table" style="display: none;">
                         <thead id="table-header">
@@ -734,6 +601,46 @@ export function getPaginationHTML(metadata: any): string {
             </div>
         </div>
 
+        <!-- Metadata Modal -->
+        <div id="metadata-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Variable Metadata</div>
+                    <button class="modal-close" id="close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="metadata-section">
+                        <h3>Variables Details (${metadata.total_variables} total)</h3>
+                        <div style="overflow-x: auto;">
+                            <table class="metadata-table" style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    <tr style="background: var(--vscode-editor-lineHighlightBackground);">
+                                        <th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">Name</th>
+                                        <th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">Label</th>
+                                        <th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">Type</th>
+                                        <th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">Format</th>
+                                        <th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">Length</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${metadata.variables.map((v: any) => `
+                                    <tr>
+                                        <td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">
+                                            ${v.type === 'character' ? '📝' : '🔢'} ${v.name}
+                                        </td>
+                                        <td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">${v.label || '-'}</td>
+                                        <td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">${v.type}</td>
+                                        <td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">${v.format || '-'}</td>
+                                        <td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">${v.length || '-'}</td>
+                                    </tr>`).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script>
             // Helper function to get variable icons
             function getVariableIcon(variable) {
@@ -760,7 +667,7 @@ export function getPaginationHTML(metadata: any): string {
 
             // Pagination state
             let currentPage = 1;
-            let pageSize = parseInt(document.getElementById('page-size-select')?.value || '100'); // Respect user preference
+            let pageSize = 100;
             let totalRows = ${metadata.total_rows};
             let filteredRows = totalRows; // Total rows after filtering
             let totalPages = Math.ceil(filteredRows / pageSize);
@@ -778,7 +685,6 @@ export function getPaginationHTML(metadata: any): string {
             const header = document.getElementById('table-header').querySelector('tr');
             const loadingMessage = document.getElementById('loading-message');
             const errorMessage = document.getElementById('error-message');
-            const metadataBtn = document.getElementById('metadata-btn');
             
             const firstBtn = document.getElementById('first-btn');
             const prevBtn = document.getElementById('prev-btn');
@@ -805,31 +711,34 @@ export function getPaginationHTML(metadata: any): string {
 
             // Initialize
             function init() {
+                console.log('Pagination viewer initialized');
+                
+                // Debug: Check if elements exist
+                console.log('Elements found:');
+                console.log('- selectAllBtn:', !!selectAllBtn);
+                console.log('- deselectAllBtn:', !!deselectAllBtn);
+                console.log('- variablesContainer:', !!variablesContainer);
+                
                 // Populate variables list dynamically
                 populateVariablesList();
-
+                
                 // Initialize selected columns with all variables
                 selectedColumns = allVariables.map(v => v.name);
                 updateSelectedCount();
-
-                // Get initial page size from dropdown
-                pageSize = parseInt(pageSizeSelect.value);
-                totalPages = Math.ceil(filteredRows / pageSize);
                 updatePaginationInfo();
                 setupEventListeners();
-
+                
                 // Set initial display mode explicitly
                 displayMode = 'name';
                 displayModeSelect.value = 'name';
-
-                // Signal that webview is ready, then load first page
-                vscode.postMessage({ command: 'webviewReady' });
-
-                // Load first page after signaling ready
-                setTimeout(() => loadPage(1), 100);
+                console.log('Initial display mode set to:', displayMode);
+                
+                loadPage(1);
             }
 
             function populateVariablesList() {
+                console.log('Populating variables list with', allVariables.length, 'variables');
+                
                 if (!variablesContainer) {
                     console.error('Variables container not found');
                     return;
@@ -848,13 +757,12 @@ export function getPaginationHTML(metadata: any): string {
                     checkbox.setAttribute('data-variable', variable.name);
                     checkbox.checked = true;
                     
-                    
                     const span = document.createElement('span');
                     span.className = 'variable-text';
                     span.setAttribute('data-name', variable.name);
                     span.setAttribute('data-label', variable.label || '');
-
-                    // Create tooltip content with proper escaping
+                    
+                    // Create tooltip content
                     let tooltip = 'Variable: ' + variable.name;
                     if (variable.label && variable.label !== variable.name) {
                         tooltip += '\\nLabel: ' + variable.label;
@@ -866,91 +774,45 @@ export function getPaginationHTML(metadata: any): string {
                     if (variable.length) {
                         tooltip += '\\nLength: ' + variable.length;
                     }
-
-                    // Use both title attribute (for native tooltip) and data-tooltip (for CSS tooltip)
-                    span.setAttribute('title', tooltip);
+                    
                     span.setAttribute('data-tooltip', tooltip);
                     span.innerHTML = getVariableIcon(variable) + ' ' + variable.name;
-
-                    // Ensure span is interactive
-                    span.style.pointerEvents = 'auto';
-                    span.style.cursor = 'help';
-
+                    
                     item.appendChild(checkbox);
                     item.appendChild(span);
                     
                     variablesContainer.appendChild(item);
-                    
                 });
-            }
-
-            function showMetadata() {
-                // Create metadata table HTML
-                const metadataHTML = '<table class="metadata-table">' +
-                    '<thead><tr>' +
-                    '<th style="width: 30px;">#</th>' +
-                    '<th>Variable</th>' +
-                    '<th>Type</th>' +
-                    '<th>Label</th>' +
-                    '<th>Format</th>' +
-                    '<th>Length</th>' +
-                    '</tr></thead><tbody>' +
-                    allVariables.map((v, index) =>
-                        '<tr>' +
-                        '<td>' + (index + 1) + '</td>' +
-                        '<td>' + getVariableIcon(v) + ' ' + v.name + '</td>' +
-                        '<td>' + v.type + '</td>' +
-                        '<td>' + (v.label || '-') + '</td>' +
-                        '<td>' + (v.format || '-') + '</td>' +
-                        '<td>' + (v.length || '-') + '</td>' +
-                        '</tr>'
-                    ).join('') +
-                    '</tbody></table>';
-
-                // Create modal overlay
-                const overlay = document.createElement('div');
-                overlay.className = 'modal-overlay';
-
-                // Create modal content
-                const modal = document.createElement('div');
-                modal.className = 'modal-content';
-
-                modal.innerHTML =
-                    '<div class="modal-header">' +
-                    '<h2>📊 Variable Metadata - ' + allVariables.length + ' Variables</h2>' +
-                    '<button class="close-btn" id="close-metadata-btn">✕ Close</button>' +
-                    '</div>' +
-                    '<div class="modal-body">' + metadataHTML + '</div>';
-
-                overlay.appendChild(modal);
-                document.body.appendChild(overlay);
-
-                // Close handlers
-                const closeBtn = modal.querySelector('#close-metadata-btn');
-                closeBtn.addEventListener('click', () => {
-                    document.body.removeChild(overlay);
-                });
-
-                // Close on overlay click
-                overlay.addEventListener('click', (e) => {
-                    if (e.target === overlay) {
-                        document.body.removeChild(overlay);
-                    }
-                });
-
-                // Close on Escape key
-                const escapeHandler = (e) => {
-                    if (e.key === 'Escape') {
-                        document.body.removeChild(overlay);
-                        document.removeEventListener('keydown', escapeHandler);
-                    }
-                };
-                document.addEventListener('keydown', escapeHandler);
+                
+                console.log('Variables list populated. Checking first tooltip:', 
+                    document.querySelector('.variable-text')?.getAttribute('data-tooltip')?.substring(0, 50));
             }
 
             function setupEventListeners() {
-                // Metadata button
-                metadataBtn.addEventListener('click', showMetadata);
+                // Metadata modal elements
+                const metadataBtn = document.getElementById('metadata-btn');
+                const metadataModal = document.getElementById('metadata-modal');
+                const closeModalBtn = document.getElementById('close-modal');
+
+                // Metadata modal event listeners
+                if (metadataBtn) {
+                    metadataBtn.addEventListener('click', () => {
+                        metadataModal.style.display = 'block';
+                    });
+                }
+
+                if (closeModalBtn) {
+                    closeModalBtn.addEventListener('click', () => {
+                        metadataModal.style.display = 'none';
+                    });
+                }
+
+                // Close modal when clicking outside
+                window.addEventListener('click', (e) => {
+                    if (e.target === metadataModal) {
+                        metadataModal.style.display = 'none';
+                    }
+                });
 
                 firstBtn.addEventListener('click', () => goToPage(1));
                 prevBtn.addEventListener('click', () => goToPage(currentPage - 1));
@@ -994,55 +856,60 @@ export function getPaginationHTML(metadata: any): string {
                     }
                 });
                 
-                // Variable selection event listeners
+                // Variable selection event listeners with debugging
                 selectAllBtn.addEventListener('click', () => {
+                    console.log('Select All button clicked');
                     selectAllVariables();
                 });
                 deselectAllBtn.addEventListener('click', () => {
+                    console.log('Clear All button clicked');
                     deselectAllVariables();
                 });
 
                 // KEEP and DROP functionality
                 const keepInput = document.getElementById('keep-input');
+                const keepBtn = document.getElementById('keep-btn');
                 const dropInput = document.getElementById('drop-input');
-                const applyKeepBtn = document.getElementById('apply-keep-btn');
-                const applyDropBtn = document.getElementById('apply-drop-btn');
+                const dropBtn = document.getElementById('drop-btn');
 
-                if (applyKeepBtn) {
-                    applyKeepBtn.addEventListener('click', () => {
-                        applyKeepVariables();
+                if (keepBtn && keepInput) {
+                    keepBtn.addEventListener('click', () => {
+                        const varsToKeep = keepInput.value.trim().toUpperCase().split(/\\s+/).filter(v => v);
+                        if (varsToKeep.length > 0) {
+                            console.log('Keeping variables:', varsToKeep);
+                            applyKeepVariables(varsToKeep);
+                        }
                     });
-                }
-
-                if (applyDropBtn) {
-                    applyDropBtn.addEventListener('click', () => {
-                        applyDropVariables();
-                    });
-                }
-
-                // Allow Enter key to apply KEEP/DROP
-                if (keepInput) {
                     keepInput.addEventListener('keypress', (e) => {
                         if (e.key === 'Enter') {
-                            applyKeepVariables();
+                            keepBtn.click();
                         }
                     });
                 }
 
-                if (dropInput) {
+                if (dropBtn && dropInput) {
+                    dropBtn.addEventListener('click', () => {
+                        const varsToDrop = dropInput.value.trim().toUpperCase().split(/\\s+/).filter(v => v);
+                        if (varsToDrop.length > 0) {
+                            console.log('Dropping variables:', varsToDrop);
+                            applyDropVariables(varsToDrop);
+                        }
+                    });
                     dropInput.addEventListener('keypress', (e) => {
                         if (e.key === 'Enter') {
-                            applyDropVariables();
+                            dropBtn.click();
                         }
                     });
                 }
                 displayModeSelect.addEventListener('change', () => {
+                    console.log('Display mode changed to:', displayModeSelect.value);
                     updateDisplayMode();
                 });
                 
                 // Variable checkbox listeners - use event delegation
                 variablesContainer.addEventListener('change', (e) => {
                     if (e.target.classList.contains('variable-checkbox')) {
+                        console.log('Variable checkbox changed:', e.target.dataset.variable, e.target.checked);
                         handleVariableSelection();
                     }
                 });
@@ -1054,8 +921,20 @@ export function getPaginationHTML(metadata: any): string {
                         const checkbox = item.querySelector('.variable-checkbox');
                         if (checkbox) {
                             checkbox.checked = !checkbox.checked;
+                            console.log('Variable item clicked:', checkbox.dataset.variable, checkbox.checked);
                             handleVariableSelection();
                         }
+                    }
+                });
+
+                // Add tooltip positioning for sidebar variables
+                variablesContainer.addEventListener('mousemove', (e) => {
+                    const variableText = e.target.closest('.variable-text');
+                    if (variableText && variableText.hasAttribute('data-tooltip')) {
+                        const rect = variableText.getBoundingClientRect();
+                        // Position tooltip to the right of the sidebar
+                        variableText.style.setProperty('--tooltip-x', (rect.right + 10) + 'px');
+                        variableText.style.setProperty('--tooltip-y', rect.top + 'px');
                     }
                 });
             }
@@ -1068,16 +947,18 @@ export function getPaginationHTML(metadata: any): string {
 
             function loadPage(page) {
                 if (isLoading) return;
-
+                
+                console.log('Loading page', page, 'with', pageSize, 'rows per page');
                 isLoading = true;
                 currentPage = page;
-
+                
                 showLoading();
                 updatePaginationInfo();
-
+                
                 const startRow = (page - 1) * pageSize;
-
+                
                 // Request data from extension with current filter and selected variables
+                console.log('Requesting data with selectedVars:', selectedColumns);
                 vscode.postMessage({
                     command: 'loadData',
                     data: {
@@ -1093,37 +974,7 @@ export function getPaginationHTML(metadata: any): string {
                 table.style.display = 'none';
                 errorMessage.style.display = 'none';
                 loadingMessage.style.display = 'block';
-                const loadingText = document.getElementById('loading-text');
-                if (loadingText) {
-                    loadingText.textContent = 'Loading page ' + currentPage + '...';
-                }
-
-                // Show skeleton rows for better UX
-                showSkeletonRows();
-            }
-
-            function showSkeletonRows() {
-                // Create skeleton table while loading
-                if (columns.length > 0 && table) {
-                    table.style.display = 'table';
-                    table.style.opacity = '0.5';
-                    tbody.innerHTML = '';
-
-                    // Create 5 skeleton rows
-                    for (let i = 0; i < Math.min(5, pageSize); i++) {
-                        const tr = document.createElement('tr');
-                        tr.className = 'skeleton-row';
-
-                        columns.forEach(() => {
-                            const td = document.createElement('td');
-                            td.className = 'skeleton-cell';
-                            td.innerHTML = '<div class="skeleton-content"></div>';
-                            tr.appendChild(td);
-                        });
-
-                        tbody.appendChild(tr);
-                    }
-                }
+                loadingMessage.textContent = 'Loading page ' + currentPage + '...';
             }
 
             function showError(message) {
@@ -1138,8 +989,6 @@ export function getPaginationHTML(metadata: any): string {
                 loadingMessage.style.display = 'none';
                 errorMessage.style.display = 'none';
                 table.style.display = 'table';
-                table.style.opacity = '1';
-                table.classList.add('fade-in');
                 isLoading = false;
             }
 
@@ -1161,130 +1010,9 @@ export function getPaginationHTML(metadata: any): string {
                 }
             }
 
-            function applyKeepVariables() {
-                const keepInput = document.getElementById('keep-input');
-                const keepText = keepInput.value.trim();
-
-                if (!keepText) {
-                    return; // Nothing to do if empty
-                }
-
-                // Clear DROP input when KEEP is applied
-                const dropInput = document.getElementById('drop-input');
-                dropInput.value = '';
-
-                // Parse variable names (comma-separated, case-insensitive)
-                const keepVarNames = keepText.split(',').map(v => v.trim().toUpperCase()).filter(v => v);
-
-                // Create a case-insensitive lookup map
-                const variableMap = new Map();
-                allVariables.forEach(v => {
-                    variableMap.set(v.name.toUpperCase(), v.name);
-                });
-
-                // Find matching variables (case-insensitive)
-                const validKeepVars = new Set();
-                const notFound = [];
-
-                keepVarNames.forEach(varName => {
-                    if (variableMap.has(varName)) {
-                        validKeepVars.add(variableMap.get(varName));
-                    } else {
-                        notFound.push(varName);
-                    }
-                });
-
-                if (notFound.length > 0) {
-                    // Show warning but continue with valid variables
-                    const warningDiv = document.createElement('div');
-                    warningDiv.style.cssText = 'background: var(--vscode-inputValidation-warningBackground); color: var(--vscode-inputValidation-warningForeground); padding: 8px; margin: 4px 0; border-radius: 3px; font-size: 11px;';
-                    warningDiv.textContent = 'Variables not found: ' + notFound.join(', ');
-                    const container = keepInput.parentElement;
-                    const existingWarning = container.querySelector('.warning-message');
-                    if (existingWarning) {
-                        existingWarning.remove();
-                    }
-                    warningDiv.className = 'warning-message';
-                    container.appendChild(warningDiv);
-                    setTimeout(() => warningDiv.remove(), 5000);
-                }
-
-                if (validKeepVars.size > 0) {
-                    // Update all checkboxes based on KEEP list
-                    document.querySelectorAll('.variable-checkbox').forEach((cb) => {
-                        const varName = cb.dataset.variable;
-                        cb.checked = validKeepVars.has(varName);
-                    });
-
-                    // Update selection and reload
-                    updateSelectedColumns();
-                    updateSelectedCount();
-                    loadPage(currentPage);
-                }
-            }
-
-            function applyDropVariables() {
-                const dropInput = document.getElementById('drop-input');
-                const dropText = dropInput.value.trim();
-
-                if (!dropText) {
-                    return; // Nothing to do if empty
-                }
-
-                // Clear KEEP input when DROP is applied
-                const keepInput = document.getElementById('keep-input');
-                keepInput.value = '';
-
-                // Parse variable names (comma-separated, case-insensitive)
-                const dropVarNames = dropText.split(',').map(v => v.trim().toUpperCase()).filter(v => v);
-
-                // Create a case-insensitive lookup map
-                const variableMap = new Map();
-                allVariables.forEach(v => {
-                    variableMap.set(v.name.toUpperCase(), v.name);
-                });
-
-                // Find matching variables to drop (case-insensitive)
-                const validDropVars = new Set();
-                const notFound = [];
-
-                dropVarNames.forEach(varName => {
-                    if (variableMap.has(varName)) {
-                        validDropVars.add(variableMap.get(varName));
-                    } else {
-                        notFound.push(varName);
-                    }
-                });
-
-                if (notFound.length > 0) {
-                    // Show warning but continue with valid variables
-                    const warningDiv = document.createElement('div');
-                    warningDiv.style.cssText = 'background: var(--vscode-inputValidation-warningBackground); color: var(--vscode-inputValidation-warningForeground); padding: 8px; margin: 4px 0; border-radius: 3px; font-size: 11px;';
-                    warningDiv.textContent = 'Variables not found: ' + notFound.join(', ');
-                    const container = dropInput.parentElement;
-                    const existingWarning = container.querySelector('.warning-message');
-                    if (existingWarning) {
-                        existingWarning.remove();
-                    }
-                    warningDiv.className = 'warning-message';
-                    container.appendChild(warningDiv);
-                    setTimeout(() => warningDiv.remove(), 5000);
-                }
-
-                // Select all variables EXCEPT those in the DROP list
-                document.querySelectorAll('.variable-checkbox').forEach((cb) => {
-                    const varName = cb.dataset.variable;
-                    cb.checked = !validDropVars.has(varName);
-                });
-
-                // Update selection and reload
-                updateSelectedColumns();
-                updateSelectedCount();
-                loadPage(currentPage);
-            }
-
             function applyFilter() {
                 const whereClause = whereInput.value.trim();
+                console.log('Applying filter:', whereClause);
                 
                 currentWhereClause = whereClause;
                 currentPage = 1;
@@ -1308,6 +1036,7 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function clearFilter() {
+                console.log('Clearing filter...');
                 whereInput.value = '';
                 currentWhereClause = '';
                 filteredRows = totalRows;
@@ -1349,6 +1078,7 @@ export function getPaginationHTML(metadata: any): string {
             function renderTable(data, cols) {
                 // Update columns - use selected columns if available, otherwise use all
                 columns = selectedColumns.length > 0 ? selectedColumns : cols;
+                console.log('Rendering table with columns:', columns);
                 
                 // Update headers using the display mode
                 updateTableHeaders();
@@ -1391,23 +1121,28 @@ export function getPaginationHTML(metadata: any): string {
                     tbody.appendChild(tr);
                 });
 
+                console.log('Rendered', data.length, 'rows with', columns.length, 'selected columns');
                 showData();
             }
 
             // Handle messages from extension
             window.addEventListener('message', event => {
                 const message = event.data;
+                console.log('Received message:', message.type);
 
                 switch (message.type) {
                     case 'initialData':
+                        console.log('Processing initial data:', message.data.length, 'rows');
                         renderTable(message.data, message.columns);
                         break;
 
                     case 'dataChunk':
+                        console.log('Processing data chunk:', message.data.length, 'rows for page', currentPage);
                         renderTable(message.data, message.columns);
                         break;
 
                     case 'filterResult':
+                        console.log('Filter applied. Filtered rows:', message.filteredRows);
                         filteredRows = message.filteredRows;
                         totalPages = Math.ceil(filteredRows / pageSize);
                         currentPage = 1;
@@ -1431,22 +1166,20 @@ export function getPaginationHTML(metadata: any): string {
 
             // Variable selection functions
             function handleVariableSelection() {
+                console.log('Handling variable selection change...');
                 updateSelectedColumns();
                 updateSelectedCount();
-
+                
                 // Reload current page with new column selection
                 if (selectedColumns.length > 0) {
+                    console.log('Reloading page', currentPage, 'with', selectedColumns.length, 'selected columns');
                     loadPage(currentPage);
+                } else {
+                    console.log('No columns selected, showing message');
                 }
             }
 
             function selectAllVariables() {
-                // Clear KEEP/DROP inputs when Select All is used
-                const keepInput = document.getElementById('keep-input');
-                const dropInput = document.getElementById('drop-input');
-                if (keepInput) keepInput.value = '';
-                if (dropInput) dropInput.value = '';
-
                 document.querySelectorAll('.variable-checkbox').forEach(cb => cb.checked = true);
                 updateSelectedColumns();
                 updateSelectedCount();
@@ -1454,20 +1187,21 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function deselectAllVariables() {
-                // Clear KEEP/DROP inputs when Clear All is used
-                const keepInput = document.getElementById('keep-input');
-                const dropInput = document.getElementById('drop-input');
-                if (keepInput) keepInput.value = '';
-                if (dropInput) dropInput.value = '';
-
+                console.log('Deselecting all variables...');
                 const checkboxes = document.querySelectorAll('.variable-checkbox');
-                checkboxes.forEach((cb) => {
+                console.log('Found', checkboxes.length, 'checkboxes to deselect');
+                
+                checkboxes.forEach((cb, index) => {
                     if (cb.dataset && cb.dataset.variable) {
+                        console.log('Deselecting checkbox', index, ':', cb.dataset.variable);
                         cb.checked = false;
                     }
                 });
+                
                 updateSelectedColumns();
                 updateSelectedCount();
+                
+                console.log('After deselect all, selected columns:', selectedColumns.length);
             }
 
             function updateSelectedColumns() {
@@ -1477,9 +1211,11 @@ export function getPaginationHTML(metadata: any): string {
                         selectedColumns.push(cb.dataset.variable);
                     }
                 });
-
+                console.log('Selected columns updated:', selectedColumns.length, selectedColumns);
+                
                 // If no columns selected, show a message but don't auto-select
                 if (selectedColumns.length === 0) {
+                    console.log('No columns selected - will show message');
                     showNoColumnsMessage();
                 } else {
                     hideNoColumnsMessage();
@@ -1491,8 +1227,48 @@ export function getPaginationHTML(metadata: any): string {
                 selectedCountSpan.textContent = count + ' selected';
             }
 
+            // KEEP functionality - select only specified variables
+            function applyKeepVariables(varsToKeep) {
+                const checkboxes = document.querySelectorAll('.variable-checkbox');
+                checkboxes.forEach(cb => {
+                    const varName = cb.dataset.variable?.toUpperCase();
+                    if (varName) {
+                        cb.checked = varsToKeep.includes(varName);
+                    }
+                });
+
+                updateSelectedColumns();
+                updateSelectedCount();
+                loadPage(currentPage);
+
+                // Clear the input after applying
+                const keepInput = document.getElementById('keep-input');
+                if (keepInput) keepInput.value = '';
+            }
+
+            // DROP functionality - deselect specified variables
+            function applyDropVariables(varsToDrop) {
+                const checkboxes = document.querySelectorAll('.variable-checkbox');
+                checkboxes.forEach(cb => {
+                    const varName = cb.dataset.variable?.toUpperCase();
+                    if (varName && varsToDrop.includes(varName)) {
+                        cb.checked = false;
+                    }
+                });
+
+                updateSelectedColumns();
+                updateSelectedCount();
+                loadPage(currentPage);
+
+                // Clear the input after applying
+                const dropInput = document.getElementById('drop-input');
+                if (dropInput) dropInput.value = '';
+            }
+
             function updateDisplayMode() {
                 displayMode = displayModeSelect.value;
+                console.log('updateDisplayMode called - mode:', displayMode);
+                console.log('Variable text elements found:', document.querySelectorAll('.variable-text').length);
                 
                 // Update variable text display
                 document.querySelectorAll('.variable-text').forEach((span, index) => {
@@ -1529,10 +1305,18 @@ export function getPaginationHTML(metadata: any): string {
                             tooltip += '\\nLength: ' + variable.length;
                         }
                         
-                        // Use both attributes for better compatibility
-                        span.setAttribute('title', tooltip);
                         span.setAttribute('data-tooltip', tooltip);
+                        span.removeAttribute('title'); // Remove title to prevent default tooltip
                         
+                        // Debug tooltip setting
+                        if (index < 3) {
+                            console.log('Set tooltip for', name, ':', tooltip);
+                        }
+                        
+                        // Debug first few items
+                        if (index < 3) {
+                            console.log('Updated variable', index, ':', name, '→', newText);
+                        }
                     }
                 });
                 
@@ -1570,8 +1354,8 @@ export function getPaginationHTML(metadata: any): string {
                         if (variable.length) {
                             headerTooltip += '\\nLength: ' + variable.length;
                         }
-                        // Only use data-tooltip for CSS styling (no native title tooltip)
                         th.setAttribute('data-tooltip', headerTooltip);
+                        th.removeAttribute('title'); // Remove title to prevent default tooltip
                     } else {
                         th.textContent = colName;
                     }
@@ -1582,12 +1366,12 @@ export function getPaginationHTML(metadata: any): string {
 
             // Initialize when DOM is ready
             if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', () => {
-                    init();
-                });
+                document.addEventListener('DOMContentLoaded', init);
             } else {
                 init();
             }
+
+            console.log('Pagination SAS Dataset Viewer initialized');
         </script>
     </body>
     </html>`;

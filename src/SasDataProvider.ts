@@ -135,6 +135,31 @@ export class SASDatasetDocument implements vscode.CustomDocument {
     }
 
     /**
+     * Get the count of rows matching a filter without loading data
+     * Much faster than loading data just for counting
+     */
+    public async getFilteredRowCount(whereClause: string): Promise<number> {
+        if (!this.usePythonFallback && this.reader) {
+            try {
+                return await this.reader.getFilteredRowCount(whereClause);
+            } catch (error) {
+                this.logger.warn('Failed to get filtered row count', error);
+            }
+        }
+        
+        // Fallback: load one row to get the count (less efficient but works)
+        const result = await this.getData({
+            filePath: this.uri.fsPath,
+            startRow: 0,
+            numRows: 1,
+            selectedVars: this.metadata?.variables.map(v => v.name) || [],
+            whereClause: whereClause
+        });
+        
+        return result.filtered_rows || 0;
+    }
+
+    /**
      * Retrieves data from the SAS dataset based on the request parameters
      */
     public async getData(request: SASDataRequest): Promise<SASDataResponse> {
@@ -153,16 +178,31 @@ export class SASDatasetDocument implements vscode.CustomDocument {
 
                 // Get data with TypeScript reader
                 let data: DataRow[];
+                let filteredRowCount: number;
 
                 if (request.whereClause) {
-                    // Apply WHERE clause filtering
-                    data = await this.reader.getFilteredData(request.whereClause);
+                    // Get filtered row count efficiently
+                    filteredRowCount = await this.reader.getFilteredRowCount(request.whereClause);
+                    
+                    // Log the request parameters for debugging
+                    this.logger.debug(`getData request params: startRow=${request.startRow}, numRows=${request.numRows}`);
+                    
+                    // Now get the actual data page
+                    data = await this.reader.getData({
+                        startRow: request.startRow,
+                        numRows: request.numRows,
+                        variables: request.selectedVars,
+                        whereClause: request.whereClause
+                    });
+                    
+                    this.logger.info(`Filter applied, ${filteredRowCount} rows match, returned ${data.length} rows for current page (requested: ${request.numRows})`);
                 } else {
                     data = await this.reader.getData({
                         startRow: request.startRow,
                         numRows: request.numRows,
                         variables: request.selectedVars
                     });
+                    filteredRowCount = this.metadata?.total_rows || 0;
                 }
 
                 const elapsed = Date.now() - startTime;
@@ -172,7 +212,7 @@ export class SASDatasetDocument implements vscode.CustomDocument {
                 return {
                     data: data,
                     total_rows: this.metadata?.total_rows || 0,
-                    filtered_rows: data.length,
+                    filtered_rows: filteredRowCount,
                     start_row: request.startRow,
                     returned_rows: data.length,
                     columns: request.selectedVars || this.metadata?.variables.map(v => v.name) || []

@@ -263,30 +263,18 @@ export class SASWebviewPanel {
         this.logger.debug('Applying filter', { whereClause: whereClause.substring(0, 100) });
 
         try {
+            let filteredRowCount: number;
+            
             if (whereClause.trim() === '') {
                 // Clearing filter - return to full dataset
                 this.logger.debug('Clearing filter - returning to full dataset');
-                await this.panel.webview.postMessage({
-                    type: 'filterResult',
-                    filteredRows: this.document.metadata?.total_rows || 0,
-                    whereClause: ''
-                });
-                return;
+                filteredRowCount = this.document.metadata?.total_rows || 0;
+            } else {
+                // Use the optimized getFilteredRowCount method
+                // This is much faster as it doesn't load any actual data
+                filteredRowCount = await this.document.getFilteredRowCount(whereClause);
+                this.logger.info(`Filter applied: ${filteredRowCount} rows match the filter`);
             }
-
-            // Get filtered row count by requesting a small sample with the filter
-            const countRequest: SASDataRequest = {
-                filePath: this.document.uri.fsPath,
-                startRow: 0,
-                numRows: 1, // Just get one row to get the total count
-                selectedVars: this.document.metadata?.variables.map(v => v.name) || [],
-                whereClause: whereClause
-            };
-
-            const result = await this.document.getData(countRequest);
-            const filteredRowCount = result.filtered_rows || result.total_rows || 0;
-
-            this.logger.info(`Filter applied: ${filteredRowCount} rows match the filter`);
 
             // Send filter result back to webview
             await this.panel.webview.postMessage({

@@ -1,10 +1,10 @@
 # SAS Dataset Viewer for VS Code
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files directly in your editor. No SAS installation required!
+A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
 
 ## ✨ Features
 
@@ -34,6 +34,13 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 
 ### 🎯 **Smart Features**
 
+- **Unique Values Extraction**: Get unique values for categorical variables with counts
+- **Multi-column Unique**: NODUPKEY equivalent for multiple variables
+- **Enhanced WHERE Filtering**:
+  - Case-insensitive string comparisons
+  - Compound conditions with AND/OR
+  - SAS-style operators (EQ, NE, GT, LT, GE, LE)
+
 - **Metadata View**: See all variable details in a popup
 - **Variable Icons**: Visual indicators for data types
   - 📝 Character variables
@@ -45,25 +52,32 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 
 ### 🚀 **Performance**
 
+- **600-700x faster** than v1.0 with TypeScript-first architecture
+- Native TypeScript reader using js-stream-sas7bdat library
+- Metadata extraction in ~1ms (vs 730ms in v1.0)
+- Data reading in <1ms (vs 605ms in v1.0)
+- Smart caching for filtered results
+- Automatic Python fallback for edge cases
 - Optimized pagination (50, 100, 200, 500 rows per page)
-- Efficient Python backend using pandas and pyreadstat
-- Smart data caching for smooth navigation
 - Professional logging system with debug mode
 
 ## 📋 Requirements
 
-### Python Requirements
+### VS Code Requirements
 
-- Python 3.x installed and accessible as `py` command
-- Required Python packages:
+- VS Code version 1.74.0 or higher
+- Node.js runtime (included with VS Code)
+
+### Optional Python Fallback
+
+- Python 3.x installed and accessible as `py` command (optional)
+- Required Python packages for fallback mode:
 
   ```bash
   pip install pandas pyreadstat
   ```
 
-### VS Code Requirements
-
-- VS Code version 1.74.0 or higher
+> **Note**: Version 2.0.0 uses a native TypeScript reader by default. Python is only required as a fallback for edge cases.
 
 ## 🎮 Usage
 
@@ -106,12 +120,28 @@ This extension contributes the following settings:
 
 - `sasDatasetViewer.enableDebugLogging`: Enable debug logging output (default: false)
 
+## 📊 Commands
+
+This extension contributes the following commands:
+
+- `SAS: Open SAS Dataset`: Open a SAS dataset file
+- `SAS Dataset Viewer: Show Output`: Display the output channel for debugging
+
 ## 🐛 Known Issues
 
 - Virtual scrolling mode has limitations with very large datasets (use pagination mode)
 - Some complex WHERE clauses may require specific formatting
 
 ## 📝 Release Notes
+
+### 2.0.0 (Current)
+
+- **Major Performance Upgrade**: 600-700x faster with TypeScript-first architecture
+- **Enhanced WHERE Filtering**: Case-insensitive comparisons, better AND/OR support
+- **New Feature**: Unique values extraction for categorical variables
+- **New Feature**: Multi-column unique combinations (NODUPKEY equivalent)
+- **Improved Architecture**: TypeScript reader with automatic Python fallback
+- **Better Logging**: Show output command for debugging (`SAS Dataset Viewer: Show Output`)
 
 ### 1.0.0
 

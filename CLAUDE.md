@@ -14,27 +14,18 @@ py -m pip install pandas pyreadstat numpy
 
 ### Node.js Setup
 ```bash
-# IMPORTANT: Node.js must be properly installed and available in system PATH
-# Download from: https://nodejs.org/
-# After installation, verify with:
+# Node.js is properly installed and available in system PATH
+# Verify with:
 node --version
 npm --version
-
-# If Node.js is not in PATH, use full paths (example):
-# "C:\Program Files\nodejs\node.exe"
-# "C:\Program Files\nodejs\npm.cmd"
 ```
 
 ### TypeScript Compilation
 ```bash
-# Standard commands (requires Node.js in PATH)
+# Standard commands
 npm install          # Install dependencies
 npm run compile      # One-time compilation
 npm run watch        # Watch mode for development
-
-# If Node.js is not in PATH, use full paths:
-"C:\Program Files\nodejs\npm.cmd" install
-"C:\Program Files\nodejs\npm.cmd" run compile
 ```
 
 ### Extension Publishing
@@ -67,7 +58,14 @@ py test_python.py
 
 ## Architecture Overview
 
-This VS Code extension enables viewing and filtering SAS7BDAT dataset files. The architecture uses a **hybrid TypeScript/Python approach** with multiple rendering strategies.
+This VS Code extension enables viewing and filtering SAS7BDAT dataset files. The architecture uses a **TypeScript-first approach with Python fallback** and multiple rendering strategies.
+
+**Version 2.0.0 Features:**
+- TypeScript-based SAS reader using js-stream-sas7bdat (600-700x faster)
+- Enhanced WHERE clause filtering with AND/OR support
+- Unique values extraction for categorical variables
+- Multi-column unique combinations (NODUPKEY equivalent)
+- Automatic Python fallback for edge cases
 
 ### Core Components
 
@@ -76,15 +74,22 @@ This VS Code extension enables viewing and filtering SAS7BDAT dataset files. The
 - `src/SasDataProvider.ts` - Implements `vscode.CustomReadonlyEditorProvider`, manages document lifecycle and Python subprocess communication
 - `src/WebviewPanel.ts` - Central webview management, message routing, and rendering strategy selection
 
-**2. Python Backend (`python/sas_reader.py`)**
-- Uses `pyreadstat` library for native SAS7BDAT file reading
-- Provides CLI interface with commands:
-  - `metadata` - Returns dataset structure and variable information
-  - `data` - Returns paginated data with optional filtering and variable selection
-- Supports WHERE clause filtering at pandas level for efficiency
+**2. TypeScript Reader (`src/readers/EnhancedSASReader.ts`)**
+- Uses `js-stream-sas7bdat` library for native SAS7BDAT file reading
+- Provides enhanced functionality:
+  - Fixed getUniqueValues implementation
+  - Multi-column unique combinations
+  - Improved WHERE clause parsing with AND/OR support
+  - Case-insensitive string comparisons
+  - Result caching for performance
+
+**3. Python Backend (`python/sas_reader.py`)** - Fallback only
+- Uses `pyreadstat` library for edge cases
+- Provides CLI interface with metadata and data commands
+- Supports WHERE clause filtering at pandas level
 - Returns JSON responses with data arrays and metadata
 
-**3. Rendering Strategies**
+**4. Rendering Strategies**
 The extension currently supports three rendering approaches (controlled by `WebviewPanel.ts`):
 
 - **PaginationWebview.ts** (Current/Recommended) - Reliable pagination with 50/100/200/500 rows per page
@@ -94,7 +99,7 @@ The extension currently supports three rendering approaches (controlled by `Webv
 ### Data Flow Architecture
 
 1. **File Opening**: VS Code detects `.sas7bdat` → triggers custom editor via extension registration
-2. **Metadata Loading**: `SASDatasetDocument.openDocument()` spawns Python process to read file metadata
+2. **Metadata Loading**: `SASDatasetDocument.openDocument()` uses TypeScript reader (falls back to Python if needed)
 3. **Webview Creation**: `SASWebviewPanel` creates webview with selected rendering strategy
 4. **Initial Data Load**:
    - Pagination mode: Loads first page (100 rows by default)
@@ -132,7 +137,7 @@ The extension currently supports three rendering approaches (controlled by `Webv
 ## Windows-Specific Requirements
 
 - Python command: `py` (not `python` or `python3`)
-- Node.js path: Full path required `"C:\nodejs\node-v22.19.0-win-x64\node.exe"`
+- Node.js: Available in PATH as `node` and `npm` commands
 - File paths: Use backslashes or properly escape forward slashes
 
 ## Current Implementation Status

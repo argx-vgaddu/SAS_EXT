@@ -26,6 +26,15 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // Register command to show output channel
+    const showOutputCommand = vscode.commands.registerCommand(
+        'sasDatasetViewer.showOutput',
+        () => {
+            Logger.show();
+            Logger.info('Output channel displayed');
+        }
+    );
+
     // Register command to open SAS dataset
     const openCommand = vscode.commands.registerCommand(
         'sasDatasetViewer.openDataset',
@@ -46,12 +55,14 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     // Add disposables to context for proper cleanup
-    context.subscriptions.push(disposable, openCommand);
+    context.subscriptions.push(disposable, openCommand, showOutputCommand);
 
     // Ensure logger is disposed when extension deactivates
     context.subscriptions.push({ dispose: () => Logger.dispose() });
 
     Logger.info('Extension activated successfully');
+    Logger.info('TypeScript reader v2.0.0 with improved WHERE clause filtering');
+    Logger.show(); // Automatically show output on activation for visibility
 }
 
 /**
