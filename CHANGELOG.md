@@ -2,6 +2,66 @@
 
 All notable changes to the "SAS Dataset Viewer" extension will be documented in this file.
 
+## [2.0.1] - 2025-01-28
+
+### 🎨 UI Redesign & Improvements
+
+#### New Features
+- **Dataset Metadata Modal**
+  - New dedicated button for dataset information
+  - Shows filename, label, rows, variables, and file path
+  - Additional metadata when available (creation date, SAS version, etc.)
+  - Dynamic row count updates when filters are applied
+
+- **Unique Values Extraction**
+  - Get unique values for any variable with counts
+  - Support for multi-column unique combinations
+  - Modal display with sortable results
+  - NODUPKEY equivalent functionality
+
+#### UI Enhancements
+- **Cleaner Interface Design**
+  - Removed redundant dataset name displays
+  - Three-column control layout for better organization
+  - Streamlined filter info bar with inline row display
+  - More efficient use of screen space
+
+- **Improved Control Organization**
+  - Left section: WHERE filter with Apply/Clear buttons
+  - Middle section: Unique values input and Show button
+  - Right section: Dataset/Variables buttons and display mode
+
+#### Bug Fixes
+- Fixed dataset label display logic
+- Improved filter result count updates
+- Enhanced modal window management
+- Better handling of null values in unique results
+
+## [2.0.0] - 2025-01-27
+
+### 🚀 Major Performance Upgrade
+
+#### Revolutionary Performance
+- **600-700x faster** than v1.0 with TypeScript-first architecture
+- Native TypeScript reader using js-stream-sas7bdat library
+- Metadata extraction in ~1ms (vs 730ms in v1.0)
+- Data reading in <1ms (vs 605ms in v1.0)
+- Smart caching for filtered results
+- Automatic Python fallback for edge cases
+
+#### Enhanced Features
+- **Advanced WHERE Filtering**
+  - Case-insensitive string comparisons
+  - Better AND/OR support with proper precedence
+  - SAS-style operators (EQ, NE, GT, LT, GE, LE)
+  - Improved error messages for invalid filters
+
+- **Better Logging**
+  - New command: `SAS Dataset Viewer: Show Output`
+  - Comprehensive debug logging when enabled
+  - Performance metrics tracking
+  - Better error diagnostics
+
 ## [1.0.0] - 2024-01-25
 
 ### 🎉 Initial Release
