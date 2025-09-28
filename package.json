@@ -11,11 +11,11 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/YOUR-USERNAME/sas-dataset-viewer"
+    "url": "https://github.com/anovagroups/sas-dataset-viewer"
   },
-  "homepage": "https://github.com/YOUR-USERNAME/sas-dataset-viewer#readme",
+  "homepage": "https://github.com/anovagroups/sas-dataset-viewer#readme",
   "bugs": {
-    "url": "https://github.com/YOUR-USERNAME/sas-dataset-viewer/issues"
+    "url": "https://github.com/anovagroups/sas-dataset-viewer/issues"
   },
   "license": "MIT",
   "engines": {
