@@ -283,13 +283,11 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             .where-input {
-                flex: 1;
                 padding: 6px 12px;
                 background: var(--vscode-input-background);
                 color: var(--vscode-input-foreground);
                 border: 1px solid var(--vscode-input-border);
                 border-radius: 3px;
-                margin-right: 10px;
                 font-size: 13px;
             }
 
@@ -512,15 +510,11 @@ export function getPaginationHTML(metadata: any): string {
             <div class="sidebar">
                 <div class="sidebar-header">
                     <div class="sidebar-title">Dataset Variables</div>
-                    <div class="dataset-label">${metadata.dataset_label || fileName}</div>
-                    
+                    ${metadata.dataset_label && metadata.dataset_label.trim() && metadata.dataset_label !== fileName ?
+                        `<div class="dataset-label">${metadata.dataset_label}</div>` : ''}
+
                     <div class="variable-controls">
                         <div class="selected-count" id="selected-count">33 selected</div>
-                    </div>
-
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px;">Select All</button>
-                        <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px;">Clear All</button>
                     </div>
 
                     <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--vscode-panel-border);">
@@ -547,24 +541,46 @@ export function getPaginationHTML(metadata: any): string {
                         </div>
                     </div>
                 </div>
-                
+
+                <!-- Select/Clear All buttons above checkboxes -->
+                <div style="display: flex; gap: 8px; margin: 12px 0 8px 0;">
+                    <button class="btn" id="select-all-btn" style="flex: 1; font-size: 11px; padding: 4px 8px;">Select All</button>
+                    <button class="btn" id="deselect-all-btn" style="flex: 1; font-size: 11px; padding: 4px 8px;">Clear All</button>
+                </div>
+
                 <div class="variables-container" id="variables-container">
                     <!-- Variables will be populated by JavaScript -->
                 </div>
             </div>
 
             <div class="content-area">
-                <div class="filter-section">
-                    <div style="display: flex; align-items: center; flex: 1; gap: 10px;">
-                        <label for="where-input">WHERE:</label>
-                        <input type="text" id="where-input" class="where-input" 
-                               placeholder="e.g., AGE > 30 and COUNTRY = 'USA'" 
-                               title="Filter the dataset using SAS-style WHERE conditions">
-                        <button class="btn" id="apply-filter-btn">Apply Filter</button>
-                        <button class="btn" id="clear-filter-btn">Clear</button>
+                <div class="filter-section" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
+                    <!-- Left side: WHERE filter -->
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
+                            <label for="where-input">WHERE:</label>
+                            <input type="text" id="where-input" class="where-input"
+                                   placeholder="e.g., AGE > 30 and COUNTRY = 'USA'"
+                                   title="Filter the dataset using SAS-style WHERE conditions"
+                                   style="flex: 1;">
+                            <button class="btn" id="apply-filter-btn">Apply Filter</button>
+                            <button class="btn" id="clear-filter-btn">Clear</button>
+                        </div>
+                        <div class="filter-info" id="filter-info" style="font-size: 12px; color: var(--vscode-descriptionForeground);">
+                            No filter applied - showing all rows
+                        </div>
                     </div>
-                    <div class="filter-info" id="filter-info">
-                        No filter applied - showing all rows
+
+                    <!-- Right side: Unique values -->
+                    <div style="min-width: 300px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <label for="unique-input" style="font-size: 13px; white-space: nowrap;">Unique Values:</label>
+                            <input type="text" id="unique-input"
+                                   placeholder="e.g., VAR1 VAR2"
+                                   title="Space-separated variables for unique values"
+                                   style="flex: 1; padding: 6px 12px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px; font-size: 13px;">
+                            <button class="btn" id="unique-btn">Show</button>
+                        </div>
                     </div>
                 </div>
 
@@ -641,6 +657,27 @@ export function getPaginationHTML(metadata: any): string {
             </div>
         </div>
 
+        <!-- Unique Values Modal -->
+        <div id="unique-values-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Unique Values</div>
+                    <button class="modal-close" id="close-unique-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="metadata-section">
+                        <h3 id="unique-modal-title">Unique Values</h3>
+                        <div id="unique-modal-summary" style="margin-bottom: 10px; color: var(--vscode-descriptionForeground); font-size: 12px;"></div>
+                        <div style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+                            <table class="metadata-table" id="unique-values-table" style="width: 100%; border-collapse: collapse;">
+                                <!-- Table will be populated by JavaScript -->
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <script>
             // Helper function to get variable icons
             function getVariableIcon(variable) {
@@ -708,6 +745,12 @@ export function getPaginationHTML(metadata: any): string {
             const selectAllBtn = document.getElementById('select-all-btn');
             const deselectAllBtn = document.getElementById('deselect-all-btn');
             const variablesContainer = document.getElementById('variables-container');
+
+            // Unique values elements
+            const uniqueInput = document.getElementById('unique-input');
+            const uniqueBtn = document.getElementById('unique-btn');
+            const uniqueValuesModal = document.getElementById('unique-values-modal');
+            const closeUniqueModal = document.getElementById('close-unique-modal');
 
             // Initialize
             function init() {
@@ -901,6 +944,32 @@ export function getPaginationHTML(metadata: any): string {
                         }
                     });
                 }
+
+                // Unique values handlers
+                if (uniqueBtn && uniqueInput) {
+                    uniqueBtn.addEventListener('click', () => {
+                        const varsForUnique = uniqueInput.value.trim().toUpperCase().split(/\\s+/).filter(v => v);
+                        if (varsForUnique.length > 0) {
+                            console.log('Getting unique values for:', varsForUnique);
+                            getUniqueValues(varsForUnique);
+                        }
+                    });
+                    uniqueInput.addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            uniqueBtn.click();
+                        }
+                    });
+                }
+
+                // Unique values modal handlers
+                if (closeUniqueModal) {
+                    closeUniqueModal.addEventListener('click', () => {
+                        if (uniqueValuesModal) {
+                            uniqueValuesModal.style.display = 'none';
+                        }
+                    });
+                }
+
                 displayModeSelect.addEventListener('change', () => {
                     console.log('Display mode changed to:', displayModeSelect.value);
                     updateDisplayMode();
@@ -1161,6 +1230,11 @@ export function getPaginationHTML(metadata: any): string {
                         console.error('Error:', message.message);
                         showError(message.message);
                         break;
+
+                    case 'uniqueValuesResult':
+                        console.log('Received unique values result');
+                        displayUniqueValues(message.data);
+                        break;
                 }
             });
 
@@ -1263,6 +1337,79 @@ export function getPaginationHTML(metadata: any): string {
                 // Clear the input after applying
                 const dropInput = document.getElementById('drop-input');
                 if (dropInput) dropInput.value = '';
+            }
+
+            // Get unique values for specified variables
+            function getUniqueValues(variables) {
+                // Validate that all variables exist
+                const invalidVars = variables.filter(v => !allVariables.some(av => av.name.toUpperCase() === v));
+                if (invalidVars.length > 0) {
+                    vscode.postMessage({
+                        command: 'error',
+                        data: { message: 'Invalid variables: ' + invalidVars.join(', ') }
+                    });
+                    return;
+                }
+
+                // Send request to extension
+                vscode.postMessage({
+                    command: 'getUniqueValues',
+                    data: { variables: variables }
+                });
+            }
+
+            // Display unique values in modal
+            function displayUniqueValues(data) {
+                const { variables, values, totalUnique } = data;
+
+                // Update modal title
+                const modalTitle = document.getElementById('unique-modal-title');
+                const modalSummary = document.getElementById('unique-modal-summary');
+                const table = document.getElementById('unique-values-table');
+
+                if (modalTitle) {
+                    modalTitle.textContent = variables.length === 1
+                        ? 'Unique Values for ' + variables[0]
+                        : 'Unique Combinations for ' + variables.join(', ');
+                }
+
+                if (modalSummary) {
+                    modalSummary.textContent = 'Found ' + totalUnique + ' unique ' + (variables.length === 1 ? 'values' : 'combinations');
+                }
+
+                // Build table
+                if (table) {
+                    // Create header
+                    let headerHtml = '<thead><tr style="background: var(--vscode-editor-lineHighlightBackground);">';
+                    variables.forEach(v => {
+                        headerHtml += '<th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">' + v + '</th>';
+                    });
+                    headerHtml += '<th style="text-align: left; padding: 8px; border-bottom: 2px solid var(--vscode-panel-border);">Count</th></tr></thead>';
+
+                    // Create body
+                    let bodyHtml = '<tbody>';
+                    values.forEach(row => {
+                        bodyHtml += '<tr>';
+                        if (variables.length === 1) {
+                            bodyHtml += '<td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">' + (row.value !== null ? row.value : '(null)') + '</td>';
+                        } else {
+                            variables.forEach(v => {
+                                const val = row.combination[v];
+                                bodyHtml += '<td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">' + (val !== null ? val : '(null)') + '</td>';
+                            });
+                        }
+                        bodyHtml += '<td style="padding: 8px; border-bottom: 1px solid var(--vscode-panel-border);">' + row.count + '</td>';
+                        bodyHtml += '</tr>';
+                    });
+                    bodyHtml += '</tbody>';
+
+                    table.innerHTML = headerHtml + bodyHtml;
+                }
+
+                // Show modal
+                if (uniqueValuesModal) {
+                    uniqueValuesModal.style.display = 'block';
+                }
             }
 
             function updateDisplayMode() {

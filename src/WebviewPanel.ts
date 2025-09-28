@@ -160,6 +160,10 @@ export class SASWebviewPanel {
                 }
                 break;
 
+            case 'getUniqueValues':
+                await this.handleGetUniqueValues(message.data);
+                break;
+
             default:
                 // Unknown command
                 break;
@@ -298,6 +302,60 @@ export class SASWebviewPanel {
     private async handleApplyFilter(data: any): Promise<void> {
         // Client-side filtering now, no need for this
         this.logger.debug('Legacy filter method called - client-side filtering used instead');
+    }
+
+    /**
+     * Handle get unique values request
+     */
+    private async handleGetUniqueValues(data: { variables: string[] }): Promise<void> {
+        const { variables } = data;
+
+        this.logger.debug('Getting unique values for variables:', variables);
+
+        try {
+            let result: any;
+            let formattedValues: any[] = [];
+
+            if (variables.length === 1) {
+                // Single variable - get unique values
+                result = await this.document.getUniqueValues(variables[0], true);
+                // Format for frontend - result is already in the correct format
+                formattedValues = result;
+            } else {
+                // Multiple variables - get unique combinations
+                result = await this.document.getUniqueCombinations(variables, true);
+                // Format for frontend - convert from column-based objects to expected format
+                formattedValues = result.map((row: any) => {
+                    const combination: any = {};
+                    variables.forEach(v => {
+                        combination[v] = row[v];
+                    });
+                    return {
+                        combination: combination,
+                        count: row._count || row.count || 0
+                    };
+                });
+            }
+
+            // Format response for webview
+            const response = {
+                variables: variables,
+                values: formattedValues,
+                totalUnique: formattedValues.length
+            };
+
+            await this.panel.webview.postMessage({
+                type: 'uniqueValuesResult',
+                data: response
+            });
+
+        } catch (error) {
+            this.logger.error('Error getting unique values', error);
+            await this.panel.webview.postMessage({
+                type: 'error',
+                message: `Failed to get unique values: ${error}`
+            });
+        }
     }
 
     private async postMessage(message: WebviewMessage): Promise<void> {
