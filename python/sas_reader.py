@@ -67,7 +67,8 @@ class SASReader:
         dataset_label = None
         if self.meta:
             # Check various possible metadata attributes for dataset label
-            possible_attrs = ['table_name', 'file_label', 'name', 'label']
+            # In SAS, the dataset label appears as "description"
+            possible_attrs = ['description', 'table_name', 'file_label', 'name', 'label']
             for attr in possible_attrs:
                 if hasattr(self.meta, attr):
                     label_value = getattr(self.meta, attr, '')

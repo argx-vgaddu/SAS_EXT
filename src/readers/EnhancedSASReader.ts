@@ -54,6 +54,16 @@ export class EnhancedSASReader {
     async getMetadata(): Promise<DatasetMetadata> {
         if (!this.metadata) {
             this.metadata = await this.dataset.getMetadata();
+            console.log('[EnhancedSASReader] Raw metadata from js-stream-sas7bdat:', {
+                keys: Object.keys(this.metadata),
+                description: this.metadata.description,
+                label: this.metadata.label,
+                datasetLabel: this.metadata.datasetLabel,
+                sasLabel: this.metadata.sasLabel,
+                name: this.metadata.name,
+                tableName: this.metadata.tableName,
+                fileLabel: this.metadata.fileLabel
+            });
         }
 
         return {
@@ -71,7 +81,14 @@ export class EnhancedSASReader {
                 new Date(this.metadata.datasetJSONCreationDateTime) : undefined,
             modifiedDate: this.metadata.dbLastModifiedDateTime ?
                 new Date(this.metadata.dbLastModifiedDateTime) : undefined,
-            label: this.metadata.label || this.metadata.name || path.basename(this.filePath, '.sas7bdat')
+            label: this.metadata.description ||  // SAS dataset description/label
+                   this.metadata.label ||
+                   this.metadata.datasetLabel ||
+                   this.metadata.sasLabel ||
+                   this.metadata.fileLabel ||
+                   this.metadata.tableName ||
+                   this.metadata.name ||
+                   ''  // Return empty string if no label found
         };
     }
 
