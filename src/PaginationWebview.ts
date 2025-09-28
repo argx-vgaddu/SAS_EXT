@@ -21,7 +21,15 @@ function getVariableIconString(variable: any): string {
 
 export function getPaginationHTML(metadata: any): string {
     const fileName = metadata.file_path.split(/[\\/]/).pop();
-    
+
+    // Debug: Log metadata to see what we have
+    console.log('[PaginationWebview] Metadata received:', {
+        dataset_label: metadata.dataset_label,
+        fileName: fileName,
+        hasLabel: !!metadata.dataset_label,
+        labelNotFileName: metadata.dataset_label !== fileName
+    });
+
     return `<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -69,7 +77,7 @@ export function getPaginationHTML(metadata: any): string {
             .sidebar-title {
                 font-size: 14px;
                 font-weight: 600;
-                margin-bottom: 8px;
+                margin-bottom: 12px;
             }
 
             .dataset-label {
@@ -183,26 +191,6 @@ export function getPaginationHTML(metadata: any): string {
                 min-width: 0;
             }
 
-            .header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 15px;
-                background: var(--vscode-sideBar-background);
-                border-radius: 6px;
-                border: 1px solid var(--vscode-panel-border);
-                margin-bottom: 15px;
-            }
-
-            .dataset-info {
-                font-size: 14px;
-                font-weight: 600;
-            }
-
-            .pagination-info {
-                font-size: 12px;
-                color: var(--vscode-descriptionForeground);
-            }
 
             .table-container {
                 flex: 1;
@@ -482,37 +470,11 @@ export function getPaginationHTML(metadata: any): string {
         </style>
     </head>
     <body>
-        <div class="header">
-            <div class="dataset-info">
-                <strong>${fileName}</strong>${metadata.dataset_label && metadata.dataset_label !== fileName ? ` - "${metadata.dataset_label}"` : ''}
-                <br>
-                <span style="font-size: 12px; color: var(--vscode-descriptionForeground);">
-                    <span id="total-rows-display">${metadata.total_rows.toLocaleString()}</span> rows, ${metadata.total_variables} variables
-                </span>
-            </div>
-            <div style="display: flex; align-items: center; gap: 15px;">
-                <div class="display-mode" style="display: flex; align-items: center; gap: 8px;">
-                    <label style="font-size: 12px;">Show:</label>
-                    <select id="display-mode" class="display-select" style="padding: 2px 6px; font-size: 12px;">
-                        <option value="name" selected>Names</option>
-                        <option value="label">Labels</option>
-                        <option value="both">Both</option>
-                    </select>
-                </div>
-                <button class="btn" id="metadata-btn" style="padding: 4px 12px; font-size: 12px;" title="View variable metadata">📊 Variables</button>
-                <div class="pagination-info">
-                    <span id="current-range">Loading...</span>
-                </div>
-            </div>
-        </div>
 
         <div class="main-container">
             <div class="sidebar">
                 <div class="sidebar-header">
                     <div class="sidebar-title">Dataset Variables</div>
-                    ${metadata.dataset_label && metadata.dataset_label.trim() && metadata.dataset_label !== fileName ?
-                        `<div class="dataset-label">${metadata.dataset_label}</div>` : ''}
-
                     <div class="variable-controls">
                         <div class="selected-count" id="selected-count">33 selected</div>
                     </div>
@@ -554,34 +516,45 @@ export function getPaginationHTML(metadata: any): string {
             </div>
 
             <div class="content-area">
-                <div class="filter-section" style="display: flex; justify-content: space-between; align-items: flex-start; gap: 20px;">
-                    <!-- Left side: WHERE filter -->
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px;">
-                            <label for="where-input">WHERE:</label>
-                            <input type="text" id="where-input" class="where-input"
-                                   placeholder="e.g., AGE > 30 and COUNTRY = 'USA'"
-                                   title="Filter the dataset using SAS-style WHERE conditions"
-                                   style="flex: 1;">
-                            <button class="btn" id="apply-filter-btn">Apply Filter</button>
-                            <button class="btn" id="clear-filter-btn">Clear</button>
-                        </div>
-                        <div class="filter-info" id="filter-info" style="font-size: 12px; color: var(--vscode-descriptionForeground);">
-                            No filter applied - showing all rows
-                        </div>
+                <div class="filter-section" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; align-items: center;">
+                    <!-- Left section: WHERE filter -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="where-input" style="white-space: nowrap;">WHERE:</label>
+                        <input type="text" id="where-input" class="where-input"
+                               placeholder="e.g., AGE > 30"
+                               title="Filter the dataset using SAS-style WHERE conditions"
+                               style="flex: 1;">
+                        <button class="btn" id="apply-filter-btn" style="padding: 6px 12px;">Apply</button>
+                        <button class="btn" id="clear-filter-btn" style="padding: 6px 12px;">Clear</button>
                     </div>
 
-                    <!-- Right side: Unique values -->
-                    <div style="min-width: 300px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <label for="unique-input" style="font-size: 13px; white-space: nowrap;">Unique Values:</label>
-                            <input type="text" id="unique-input"
-                                   placeholder="e.g., VAR1 VAR2"
-                                   title="Space-separated variables for unique values"
-                                   style="flex: 1; padding: 6px 12px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px; font-size: 13px;">
-                            <button class="btn" id="unique-btn">Show</button>
+                    <!-- Middle section: Unique values -->
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <label for="unique-input" style="white-space: nowrap;">Unique:</label>
+                        <input type="text" id="unique-input"
+                               placeholder="VAR1 VAR2"
+                               title="Space-separated variables for unique values"
+                               style="flex: 1; padding: 6px 12px; background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); border-radius: 3px; font-size: 13px;">
+                        <button class="btn" id="unique-btn" style="padding: 6px 12px;">Show</button>
+                    </div>
+
+                    <!-- Right section: Dataset Metadata, Variables button and display mode -->
+                    <div style="display: flex; align-items: center; gap: 12px; justify-content: flex-end;">
+                        <button class="btn" id="dataset-metadata-btn" style="padding: 6px 12px;" title="View dataset metadata">📄 Dataset Metadata</button>
+                        <button class="btn" id="metadata-btn" style="padding: 6px 12px;" title="View variable metadata">📊 Variables</button>
+                        <div class="display-mode" style="display: flex; align-items: center; gap: 6px;">
+                            <label style="font-size: 12px; white-space: nowrap;">Show:</label>
+                            <select id="display-mode" class="display-select" style="padding: 4px 8px; font-size: 12px;">
+                                <option value="name" selected>Names</option>
+                                <option value="label">Labels</option>
+                                <option value="both">Both</option>
+                            </select>
                         </div>
                     </div>
+                </div>
+
+                <div class="filter-info" id="filter-info" style="font-size: 12px; color: var(--vscode-descriptionForeground); padding: 0 15px; margin-bottom: 8px;">
+                    <span id="current-range">Loading...</span> | No filter applied - showing all rows
                 </div>
 
                 <div class="table-container">
@@ -617,7 +590,70 @@ export function getPaginationHTML(metadata: any): string {
             </div>
         </div>
 
-        <!-- Metadata Modal -->
+        <!-- Dataset Metadata Modal -->
+        <div id="dataset-metadata-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <div class="modal-title">Dataset Metadata</div>
+                    <button class="modal-close" id="close-dataset-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <div class="metadata-section">
+                        <h3>Dataset Information</h3>
+                        <table class="metadata-table">
+                            <tr>
+                                <td>Filename:</td>
+                                <td>${fileName}</td>
+                            </tr>
+                            ${metadata.dataset_label && metadata.dataset_label !== fileName ? `
+                            <tr>
+                                <td>Dataset Label:</td>
+                                <td>${metadata.dataset_label}</td>
+                            </tr>` : ''}
+                            <tr>
+                                <td>Total Rows:</td>
+                                <td id="dataset-total-rows">${metadata.total_rows.toLocaleString()}</td>
+                            </tr>
+                            <tr>
+                                <td>Total Variables:</td>
+                                <td>${metadata.total_variables}</td>
+                            </tr>
+                            <tr>
+                                <td>File Path:</td>
+                                <td style="word-break: break-all; font-family: monospace; font-size: 11px;">${metadata.file_path}</td>
+                            </tr>
+                            ${metadata.created_date ? `
+                            <tr>
+                                <td>Created Date:</td>
+                                <td>${metadata.created_date}</td>
+                            </tr>` : ''}
+                            ${metadata.modified_date ? `
+                            <tr>
+                                <td>Modified Date:</td>
+                                <td>${metadata.modified_date}</td>
+                            </tr>` : ''}
+                            ${metadata.sas_version ? `
+                            <tr>
+                                <td>SAS Version:</td>
+                                <td>${metadata.sas_version}</td>
+                            </tr>` : ''}
+                            ${metadata.os_version ? `
+                            <tr>
+                                <td>OS Version:</td>
+                                <td>${metadata.os_version}</td>
+                            </tr>` : ''}
+                            ${metadata.encoding ? `
+                            <tr>
+                                <td>Encoding:</td>
+                                <td>${metadata.encoding}</td>
+                            </tr>` : ''}
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Variable Metadata Modal -->
         <div id="metadata-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -699,6 +735,13 @@ export function getPaginationHTML(metadata: any): string {
                     return '❓';
                 }
             }
+            // Debug metadata
+            console.log('Metadata in webview:', {
+                dataset_label: '${metadata.dataset_label}',
+                fileName: '${fileName}',
+                labelCondition: ${metadata.dataset_label && metadata.dataset_label.trim() && metadata.dataset_label !== fileName}
+            });
+
             // Acquire VS Code API
             const vscode = acquireVsCodeApi();
 
@@ -832,12 +875,30 @@ export function getPaginationHTML(metadata: any): string {
             }
 
             function setupEventListeners() {
-                // Metadata modal elements
+                // Dataset metadata modal elements
+                const datasetMetadataBtn = document.getElementById('dataset-metadata-btn');
+                const datasetMetadataModal = document.getElementById('dataset-metadata-modal');
+                const closeDatasetModalBtn = document.getElementById('close-dataset-modal');
+
+                // Variable metadata modal elements
                 const metadataBtn = document.getElementById('metadata-btn');
                 const metadataModal = document.getElementById('metadata-modal');
                 const closeModalBtn = document.getElementById('close-modal');
 
-                // Metadata modal event listeners
+                // Dataset metadata modal event listeners
+                if (datasetMetadataBtn) {
+                    datasetMetadataBtn.addEventListener('click', () => {
+                        datasetMetadataModal.style.display = 'block';
+                    });
+                }
+
+                if (closeDatasetModalBtn) {
+                    closeDatasetModalBtn.addEventListener('click', () => {
+                        datasetMetadataModal.style.display = 'none';
+                    });
+                }
+
+                // Variable metadata modal event listeners
                 if (metadataBtn) {
                     metadataBtn.addEventListener('click', () => {
                         metadataModal.style.display = 'block';
@@ -850,10 +911,13 @@ export function getPaginationHTML(metadata: any): string {
                     });
                 }
 
-                // Close modal when clicking outside
+                // Close modals when clicking outside
                 window.addEventListener('click', (e) => {
                     if (e.target === metadataModal) {
                         metadataModal.style.display = 'none';
+                    }
+                    if (e.target === datasetMetadataModal) {
+                        datasetMetadataModal.style.display = 'none';
                     }
                 });
 
@@ -1112,9 +1176,12 @@ export function getPaginationHTML(metadata: any): string {
                 totalPages = Math.ceil(filteredRows / pageSize);
                 currentPage = 1;
                 
-                filterInfo.textContent = 'No filter applied - showing all rows';
+                filterInfo.innerHTML = '<span id="current-range">Loading...</span> | No filter applied - showing all rows';
                 filterInfo.style.fontWeight = 'normal';
-                totalRowsDisplay.textContent = totalRows.toLocaleString();
+                const datasetTotalRows = document.getElementById('dataset-total-rows');
+                if (datasetTotalRows) {
+                    datasetTotalRows.textContent = totalRows.toLocaleString();
+                }
                 
                 // Send clear filter command to backend
                 vscode.postMessage({
@@ -1217,7 +1284,10 @@ export function getPaginationHTML(metadata: any): string {
                         currentPage = 1;
                         
                         // Update display
-                        totalRowsDisplay.textContent = filteredRows.toLocaleString();
+                        const datasetTotalRows = document.getElementById('dataset-total-rows');
+                        if (datasetTotalRows) {
+                            datasetTotalRows.textContent = filteredRows.toLocaleString();
+                        }
                         if (currentWhereClause) {
                             filterInfo.textContent = 'Filter: ' + currentWhereClause + ' (' + filteredRows.toLocaleString() + ' rows match)';
                         }

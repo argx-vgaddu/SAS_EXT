@@ -88,10 +88,24 @@ export class SASDatasetDocument implements vscode.CustomDocument {
                 // Convert to existing format for compatibility
                 this.metadata = this.convertMetadata(tsMetadata);
 
+                // If TypeScript reader doesn't provide a label, try to get it from Python
+                if (!tsMetadata.label || tsMetadata.label === '') {
+                    try {
+                        const pythonMetadata = await this.executePythonCommand('metadata', this.uri.fsPath);
+                        if (pythonMetadata?.dataset_label) {
+                            this.metadata.dataset_label = pythonMetadata.dataset_label;
+                            this.logger.info('Got dataset label from Python:', pythonMetadata.dataset_label);
+                        }
+                    } catch (labelError) {
+                        this.logger.debug('Could not get dataset label from Python', labelError);
+                    }
+                }
+
                 this.logger.info('Metadata loaded successfully with TypeScript reader', {
                     totalRows: this.metadata?.total_rows,
                     totalVariables: this.metadata?.total_variables,
-                    mode: 'TypeScript'
+                    mode: 'TypeScript',
+                    dataset_label: this.metadata?.dataset_label
                 });
 
             } catch (tsError) {
@@ -130,7 +144,7 @@ export class SASDatasetDocument implements vscode.CustomDocument {
                 dtype: v.type
             })),
             file_path: this.uri.fsPath,
-            dataset_label: tsMetadata.label || path.basename(this.uri.fsPath, '.sas7bdat')
+            dataset_label: tsMetadata.label || this.metadata?.dataset_label || path.basename(this.uri.fsPath, '.sas7bdat')
         };
     }
 

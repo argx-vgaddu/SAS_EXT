@@ -41,14 +41,19 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
   - Compound conditions with AND/OR
   - SAS-style operators (EQ, NE, GT, LT, GE, LE)
 
-- **Metadata View**: See all variable details in a popup
+### 🎨 **Modern UI Design**
+
+- **Clean Interface**: Streamlined layout with no redundant information
+- **Dataset Metadata Modal**: Quick access to dataset information
+- **Variable Metadata Modal**: Detailed variable properties in a popup
+- **Three-Column Control Layout**: Organized controls for filtering, unique values, and display options
 - **Variable Icons**: Visual indicators for data types
   - 📝 Character variables
-  - \# Numeric variables
+  - 🔢 Numeric variables
   - 📅 Date variables
   - 🕐 DateTime variables
   - 💰 Currency variables
-  - % Percentage variables
+  - 📊 Percentage variables
 
 ### 🚀 **Performance**
 
@@ -134,8 +139,13 @@ This extension contributes the following commands:
 
 ## 📝 Release Notes
 
-### 2.0.0 (Current)
+### 2.0.1 (Current)
 
+- **UI Redesign**: Cleaner interface with improved layout
+  - Removed redundant dataset name displays
+  - Added Dataset Metadata button for on-demand information
+  - Organized controls into three equal sections
+  - Streamlined filter info display
 - **Major Performance Upgrade**: 600-700x faster with TypeScript-first architecture
 - **Enhanced WHERE Filtering**: Case-insensitive comparisons, better AND/OR support
 - **New Feature**: Unique values extraction for categorical variables
