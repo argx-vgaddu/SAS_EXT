@@ -14,6 +14,7 @@ image/feedback*.png
 *.vsix
 .github/**
 .git/**
+docs/**
 # Exclude dev dependencies but keep production ones
 node_modules/@types/**
 node_modules/typescript/**
