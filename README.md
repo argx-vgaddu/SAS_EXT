@@ -1,6 +1,6 @@
 # SAS Dataset Viewer for VS Code
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.1-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -171,7 +171,9 @@ MIT License - see LICENSE file for details
 
 ## 🙏 Acknowledgments
 
-- Uses [pyreadstat](https://github.com/Roche/pyreadstat) for reading SAS files
+- **[js-stream-sas7bdat](https://www.npmjs.com/package/js-stream-sas7bdat)** - Primary TypeScript library for native SAS7BDAT file reading, providing 600x performance improvement
+- **[pyreadstat](https://github.com/Roche/pyreadstat)** - Python fallback library for edge cases and advanced metadata extraction
+- **[pandas](https://pandas.pydata.org/)** - Data manipulation for Python fallback mode
 - Built with the VS Code Extension API
 
 ---
