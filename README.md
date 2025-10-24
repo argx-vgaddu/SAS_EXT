@@ -14,7 +14,10 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) 
 - Professional tabular display with pagination
 - Support for large datasets (tested with 12,000+ rows)
 - Real-time data loading with visual feedback
-- Full support for SAS transport files (v5/v6 XPORT format)
+- **Full XPT/XPORT support**:
+  - v5/v6 files (FDA submissions): Native TypeScript reader for maximum speed
+  - v8/v9 files (modern SAS): Python fallback with pyreadstat
+  - Automatic version detection and optimal reader selection
 
 ### 🔍 **Advanced Filtering**
 

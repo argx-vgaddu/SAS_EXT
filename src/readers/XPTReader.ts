@@ -62,9 +62,26 @@ export class XPTReader {
     private metadata: DatasetMetadata | null = null;
     private allData: DataRow[] | null = null;
     private library: any = null;
+    private usePythonFallback: boolean = false;
 
     constructor(filePath: string) {
         this.filePath = filePath;
+    }
+
+    /**
+     * Check if file is XPORT V8 (not supported by xport-js)
+     */
+    private async isXportV8(): Promise<boolean> {
+        try {
+            const fs = await import('fs');
+            const buffer = fs.readFileSync(this.filePath);
+            const header = buffer.toString('latin1', 0, 80);
+            // Check if header contains LIBV8 or LIBV9
+            return header.includes('LIBV8') || header.includes('LIBV9');
+        } catch (error) {
+            console.error('[XPTReader] Error checking XPT version:', error);
+            return false;
+        }
     }
 
     /**
@@ -94,22 +111,38 @@ export class XPTReader {
             const lib = await this.getLibrary();
 
             // Get metadata from the library
-            const xptMetadata: XportLibraryMetadata = await lib.getMetadata();
+            console.log('[XPTReader] Calling lib.getMetadata()...');
+            const xptMetadata = await lib.getMetadata();
+            console.log('[XPTReader] Metadata received:', JSON.stringify(xptMetadata, null, 2));
 
-            // XPT files can contain multiple datasets, we'll use the first one
-            const dataset = xptMetadata.datasets[0];
+            if (!xptMetadata) {
+                throw new Error('getMetadata() returned null or undefined');
+            }
+
+            // XPT metadata structure may vary - check for datasets property
+            let dataset: any;
+            if (xptMetadata.datasets && xptMetadata.datasets.length > 0) {
+                dataset = xptMetadata.datasets[0];
+            } else if (Array.isArray(xptMetadata) && xptMetadata.length > 0) {
+                dataset = xptMetadata[0];
+            } else {
+                // Maybe the metadata IS the dataset
+                dataset = xptMetadata;
+            }
 
             if (!dataset) {
-                throw new Error('No datasets found in XPT file');
+                throw new Error('No datasets found in XPT metadata structure');
             }
+
+            console.log('[XPTReader] Using dataset:', JSON.stringify(dataset, null, 2));
 
             // Count rows by reading the data (XPT files are typically smaller)
             const records = await this.readAllRecords();
 
             this.metadata = {
                 rowCount: records.length,
-                columnCount: dataset.variables.length,
-                variables: dataset.variables.map(v => ({
+                columnCount: dataset.variables?.length || 0,
+                variables: (dataset.variables || []).map((v: any) => ({
                     name: v.name,
                     label: v.label || v.name,
                     type: v.type === 1 ? 'number' : 'string',
@@ -118,11 +151,12 @@ export class XPTReader {
                 })),
                 createdDate: dataset.created,
                 modifiedDate: dataset.modified,
-                label: dataset.label || dataset.name
+                label: dataset.label || dataset.name || 'Unknown'
             };
 
             return this.metadata;
         } catch (error) {
+            console.error('[XPTReader] Error in getMetadata:', error);
             throw new Error(`Failed to read XPT metadata: ${error}`);
         }
     }
@@ -139,14 +173,22 @@ export class XPTReader {
             const lib = await this.getLibrary();
             const records: DataRow[] = [];
 
+            console.log('[XPTReader] Starting to read records...');
+
             // Use async iterator to read records as objects
             for await (const record of lib.read({ rowFormat: 'object' })) {
                 records.push(record);
             }
 
+            console.log(`[XPTReader] Read ${records.length} records`);
+            if (records.length > 0) {
+                console.log('[XPTReader] First record sample:', JSON.stringify(records[0], null, 2));
+            }
+
             this.allData = records;
             return records;
         } catch (error) {
+            console.error('[XPTReader] Error reading records:', error);
             throw new Error(`Failed to read XPT records: ${error}`);
         }
     }

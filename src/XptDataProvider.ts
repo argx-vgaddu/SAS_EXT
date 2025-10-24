@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import { spawn } from 'child_process';
 import { SASWebviewPanel } from './WebviewPanel';
 import { SASMetadata, SASDataResponse, SASDataRequest, IDatasetDocument } from './types';
 import { Logger } from './utils/logger';
@@ -78,17 +79,35 @@ export class XPTDatasetDocument implements IDatasetDocument {
         try {
             this.logger.info(`Loading metadata for XPT file: ${this.uri.fsPath}`);
 
-            this.reader = new XPTReader(this.uri.fsPath);
-            const xptMetadata = await this.reader.getMetadata();
+            // Try TypeScript reader first (works for v5/v6)
+            try {
+                this.reader = new XPTReader(this.uri.fsPath);
+                const xptMetadata = await this.reader.getMetadata();
 
-            // Convert to existing format for compatibility
-            this.metadata = this.convertMetadata(xptMetadata);
+                // Convert to existing format for compatibility
+                this.metadata = this.convertMetadata(xptMetadata);
 
-            this.logger.info('XPT metadata loaded successfully', {
-                totalRows: this.metadata?.total_rows,
-                totalVariables: this.metadata?.total_variables,
-                dataset_label: this.metadata?.dataset_label
-            });
+                this.logger.info('XPT metadata loaded successfully with TypeScript reader', {
+                    totalRows: this.metadata?.total_rows,
+                    totalVariables: this.metadata?.total_variables,
+                    dataset_label: this.metadata?.dataset_label
+                });
+
+            } catch (tsError) {
+                this.logger.warn('TypeScript XPT reader failed, falling back to Python (likely v8 file)', tsError);
+
+                // Fallback to Python for v8/v9 files
+                this.metadata = await this.executePythonCommand('metadata', this.uri.fsPath);
+
+                this.logger.info('XPT metadata loaded successfully with Python fallback', {
+                    totalRows: this.metadata?.total_rows,
+                    totalVariables: this.metadata?.total_variables,
+                    dataset_label: this.metadata?.dataset_label
+                });
+
+                // Mark that we're using Python for this file
+                this.reader = null;
+            }
 
         } catch (error) {
             this.logger.error('Failed to load XPT metadata', error);
@@ -139,57 +158,67 @@ export class XPTDatasetDocument implements IDatasetDocument {
             startRow: request.startRow,
             numRows: request.numRows,
             selectedVarsCount: request.selectedVars?.length || 0,
-            hasWhereClause: !!request.whereClause
+            hasWhereClause: !!request.whereClause,
+            usingTypeScript: this.reader !== null
         });
 
-        if (!this.reader) {
-            throw new Error('XPT reader not initialized');
+        // Use TypeScript reader if available (v5/v6), otherwise use Python (v8)
+        if (this.reader) {
+            try {
+                const startTime = Date.now();
+
+                // Get data with TypeScript XPT reader
+                let data: DataRow[];
+                let filteredRowCount: number;
+
+                if (request.whereClause) {
+                    filteredRowCount = await this.reader.getFilteredRowCount(request.whereClause);
+                    data = await this.reader.getData({
+                        startRow: request.startRow,
+                        numRows: request.numRows,
+                        variables: request.selectedVars,
+                        whereClause: request.whereClause
+                    });
+                    this.logger.info(`Filter applied, ${filteredRowCount} rows match, returned ${data.length} rows`);
+                } else {
+                    data = await this.reader.getData({
+                        startRow: request.startRow,
+                        numRows: request.numRows,
+                        variables: request.selectedVars
+                    });
+                    filteredRowCount = this.metadata?.total_rows || 0;
+                }
+
+                const elapsed = Date.now() - startTime;
+                this.logger.debug(`Data retrieved in ${elapsed}ms from TypeScript XPT reader`);
+
+                return {
+                    data: data,
+                    total_rows: this.metadata?.total_rows || 0,
+                    filtered_rows: filteredRowCount,
+                    start_row: request.startRow,
+                    returned_rows: data.length,
+                    columns: request.selectedVars || this.metadata?.variables.map(v => v.name) || []
+                };
+
+            } catch (tsError) {
+                this.logger.warn('TypeScript XPT reader failed for data, falling back to Python', tsError);
+                // Fall through to Python fallback below
+            }
         }
 
+        // Use Python fallback for v8 files or if TypeScript failed
         try {
-            const startTime = Date.now();
+            const args = [
+                'data',
+                request.filePath,
+                request.startRow.toString(),
+                request.numRows.toString(),
+                request.selectedVars ? request.selectedVars.join(',') : '',
+                request.whereClause || ''
+            ];
 
-            // Get data with XPT reader
-            let data: DataRow[];
-            let filteredRowCount: number;
-
-            if (request.whereClause) {
-                // Get filtered row count efficiently
-                filteredRowCount = await this.reader.getFilteredRowCount(request.whereClause);
-
-                // Log the request parameters for debugging
-                this.logger.debug(`getData request params: startRow=${request.startRow}, numRows=${request.numRows}`);
-
-                // Now get the actual data page
-                data = await this.reader.getData({
-                    startRow: request.startRow,
-                    numRows: request.numRows,
-                    variables: request.selectedVars,
-                    whereClause: request.whereClause
-                });
-
-                this.logger.info(`Filter applied, ${filteredRowCount} rows match, returned ${data.length} rows for current page (requested: ${request.numRows})`);
-            } else {
-                data = await this.reader.getData({
-                    startRow: request.startRow,
-                    numRows: request.numRows,
-                    variables: request.selectedVars
-                });
-                filteredRowCount = this.metadata?.total_rows || 0;
-            }
-
-            const elapsed = Date.now() - startTime;
-            this.logger.debug(`Data retrieved in ${elapsed}ms from XPT file`);
-
-            // Convert to existing response format
-            return {
-                data: data,
-                total_rows: this.metadata?.total_rows || 0,
-                filtered_rows: filteredRowCount,
-                start_row: request.startRow,
-                returned_rows: data.length,
-                columns: request.selectedVars || this.metadata?.variables.map(v => v.name) || []
-            };
+            return await this.executePythonCommand('data', ...args.slice(1));
 
         } catch (error) {
             this.logger.error('Failed to get data from XPT file', error);
@@ -217,6 +246,64 @@ export class XPTDatasetDocument implements IDatasetDocument {
         }
 
         return [];
+    }
+
+    /**
+     * Executes a Python command for XPT file operations
+     */
+    private async executePythonCommand(command: string, ...args: string[]): Promise<any> {
+        return new Promise((resolve, reject) => {
+            const pythonScript = path.join(this.context.extensionPath, 'python', 'xpt_reader.py');
+            const fullArgs = [pythonScript, command, ...args];
+
+            this.logger.debug(`Executing Python for XPT: py ${fullArgs.join(' ')}`);
+
+            const pythonProcess = spawn('py', fullArgs, {
+                cwd: this.context.extensionPath
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            pythonProcess.stdout.on('data', (data) => {
+                stdout += data.toString();
+            });
+
+            pythonProcess.stderr.on('data', (data) => {
+                stderr += data.toString();
+            });
+
+            pythonProcess.on('close', (code) => {
+                this.logger.debug(`Python process exited with code ${code}`);
+
+                if (code !== 0) {
+                    this.logger.error('Python process failed', { code, stderr });
+                    reject(new Error(`Python process exited with code ${code}: ${stderr}`));
+                    return;
+                }
+
+                try {
+                    const result = JSON.parse(stdout);
+                    if (result.error) {
+                        this.logger.error('Python script returned error', result.error);
+                        reject(new Error(result.error));
+                    } else {
+                        resolve(result.metadata || result);
+                    }
+                } catch (parseError) {
+                    this.logger.error('Failed to parse Python output', {
+                        parseError: parseError instanceof Error ? parseError.message : parseError,
+                        stdout: stdout.substring(0, 500)
+                    });
+                    reject(new Error(`Failed to parse Python output: ${parseError}. Output was: ${stdout}`));
+                }
+            });
+
+            pythonProcess.on('error', (error) => {
+                this.logger.error('Failed to spawn Python process', error);
+                reject(new Error(`Failed to spawn Python process: ${error.message}`));
+            });
+        });
     }
 
     /**
