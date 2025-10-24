@@ -1,6 +1,6 @@
 # SAS Dataset Viewer for VS Code
 
-![Version](https://img.shields.io/badge/version-2.0.1-blue)
+![Version](https://img.shields.io/badge/version-2.0.3-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -139,7 +139,17 @@ This extension contributes the following commands:
 
 ## 📝 Release Notes
 
-### 2.0.1 (Current)
+### 2.0.3 (Current)
+
+- **Fix**: Removed problematic nul file from package
+- **Clean**: Safe VSIX package for extraction
+
+### 2.0.2
+
+- **Documentation**: Added proper acknowledgments for js-stream-sas7bdat library
+- **Version**: Incremented to avoid marketplace conflict
+
+### 2.0.1
 
 - **UI Redesign**: Cleaner interface with improved layout
   - Removed redundant dataset name displays
