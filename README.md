@@ -1,19 +1,20 @@
 # SAS Dataset Viewer for VS Code
 
-![Version](https://img.shields.io/badge/version-2.0.3-blue)
+![Version](https://img.shields.io/badge/version-2.1.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
+A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
 
 ## ✨ Features
 
 ### 📊 **Dataset Viewing**
 
-- Open and view SAS7BDAT files directly in VS Code
+- Open and view SAS7BDAT and XPT (XPORT) files directly in VS Code
 - Professional tabular display with pagination
 - Support for large datasets (tested with 12,000+ rows)
 - Real-time data loading with visual feedback
+- Full support for SAS transport files (v5/v6 XPORT format)
 
 ### 🔍 **Advanced Filtering**
 
@@ -88,9 +89,11 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 
 ### Opening SAS Datasets
 
-1. **File Explorer**: Simply click on any `.sas7bdat` file
-2. **Command Palette**: Use `SAS: Open SAS Dataset` command
-3. **File Menu**: File → Open → Select .sas7bdat file
+1. **File Explorer**: Simply click on any `.sas7bdat` or `.xpt` file
+2. **Command Palette**:
+   - Use `SAS: Open SAS Dataset` command for .sas7bdat files
+   - Use `SAS: Open SAS XPT File` command for .xpt files
+3. **File Menu**: File → Open → Select .sas7bdat or .xpt file
 
 ### Filtering Data
 
@@ -129,7 +132,8 @@ This extension contributes the following settings:
 
 This extension contributes the following commands:
 
-- `SAS: Open SAS Dataset`: Open a SAS dataset file
+- `SAS: Open SAS Dataset`: Open a SAS7BDAT dataset file
+- `SAS: Open SAS XPT File`: Open a SAS XPT (XPORT) transport file
 - `SAS Dataset Viewer: Show Output`: Display the output channel for debugging
 
 ## 🐛 Known Issues
@@ -139,7 +143,16 @@ This extension contributes the following commands:
 
 ## 📝 Release Notes
 
-### 2.0.3 (Current)
+### 2.1.0 (Current)
+
+- **New Feature**: Full support for SAS XPT (XPORT) transport files
+  - Read and view XPT files (v5/v6 format)
+  - Same filtering and analysis features as SAS7BDAT files
+  - Integrated with xport-js library
+- **Enhancement**: Common interface for dataset documents
+- **Enhancement**: New command for opening XPT files
+
+### 2.0.3
 
 - **Fix**: Removed problematic nul file from package
 - **Clean**: Safe VSIX package for extraction

@@ -1,8 +1,8 @@
 {
   "name": "sas-dataset-viewer",
   "displayName": "SAS Dataset Viewer",
-  "description": "View, filter, and analyze SAS7BDAT dataset files directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
-  "version": "2.0.3",
+  "description": "View, filter, and analyze SAS7BDAT and XPT (XPORT) dataset files directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
+  "version": "2.1.0",
   "publisher": "anovagroups",
   "icon": "icon.png",
   "galleryBanner": {
@@ -29,12 +29,15 @@
   "keywords": [
     "sas",
     "sas7bdat",
+    "xpt",
+    "xport",
     "dataset",
     "data viewer",
     "statistics"
   ],
   "activationEvents": [
-    "onCustomEditor:sasDatasetViewer.sas7bdat"
+    "onCustomEditor:sasDatasetViewer.sas7bdat",
+    "onCustomEditor:sasDatasetViewer.xpt"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -47,12 +50,26 @@
             "filenamePattern": "*.sas7bdat"
           }
         ]
+      },
+      {
+        "viewType": "sasDatasetViewer.xpt",
+        "displayName": "SAS XPT Viewer",
+        "selector": [
+          {
+            "filenamePattern": "*.xpt"
+          }
+        ]
       }
     ],
     "commands": [
       {
         "command": "sasDatasetViewer.openDataset",
         "title": "Open SAS Dataset",
+        "category": "SAS"
+      },
+      {
+        "command": "sasDatasetViewer.openXPT",
+        "title": "Open SAS XPT File",
         "category": "SAS"
       },
       {
@@ -86,6 +103,7 @@
     "typescript": "^5.0.0"
   },
   "dependencies": {
-    "js-stream-sas7bdat": "^0.1.5"
+    "js-stream-sas7bdat": "^0.1.5",
+    "xport-js": "^0.3.2"
   }
 }

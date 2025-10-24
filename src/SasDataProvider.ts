@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { spawn } from 'child_process';
 import { SASWebviewPanel } from './WebviewPanel';
-import { SASMetadata, SASDataResponse, SASDataRequest } from './types';
+import { SASMetadata, SASDataResponse, SASDataRequest, IDatasetDocument } from './types';
 import { Logger } from './utils/logger';
 import { EnhancedSASReader, DatasetMetadata, DataRow } from './readers/EnhancedSASReader';
 
@@ -50,7 +50,7 @@ export class SASDatasetProvider implements vscode.CustomReadonlyEditorProvider<S
 /**
  * Represents a SAS dataset document with metadata and data access capabilities
  */
-export class SASDatasetDocument implements vscode.CustomDocument {
+export class SASDatasetDocument implements IDatasetDocument {
     private readonly logger = Logger.createScoped('SASDatasetDocument');
     private reader: EnhancedSASReader | null = null;
     private usePythonFallback = false;
