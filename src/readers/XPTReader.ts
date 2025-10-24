@@ -3,36 +3,36 @@
  * Wrapper around xport-js library for reading SAS Transport files
  */
 
-import * as fs from 'fs';
 import * as path from 'path';
 
-// Type definitions for xport-js (since it doesn't have official types)
+// Type definitions for xport-js Library class
 interface XportVariable {
     name: string;
     label: string;
     type: number;  // 1 = numeric, 2 = character
     length: number;
     format?: string;
-    position: number;
+    informat?: string;
 }
 
-interface XportMember {
+interface XportDataset {
     name: string;
     label?: string;
     type: string;
     created: Date;
     modified: Date;
-    sasVersion: string;
-    osType: string;
+    sasVersion?: string;
+    osType?: string;
     variables: XportVariable[];
+    records?: number;
 }
 
-interface XportMetadata {
+interface XportLibraryMetadata {
     version: number;
-    osType: string;
+    osType?: string;
     created: Date;
     modified: Date;
-    members: XportMember[];
+    datasets: XportDataset[];
 }
 
 export interface VariableMetadata {
@@ -61,24 +61,25 @@ export class XPTReader {
     private filePath: string;
     private metadata: DatasetMetadata | null = null;
     private allData: DataRow[] | null = null;
-    private xportJs: any;
+    private library: any = null;
 
     constructor(filePath: string) {
         this.filePath = filePath;
     }
 
     /**
-     * Load the xport-js library dynamically
+     * Initialize the xport-js Library instance
      */
-    private async loadXportJs(): Promise<any> {
-        if (!this.xportJs) {
+    private async getLibrary(): Promise<any> {
+        if (!this.library) {
             try {
-                this.xportJs = await import('xport-js');
+                const Library = (await import('xport-js')).default;
+                this.library = new Library(this.filePath);
             } catch (error) {
-                throw new Error(`Failed to load xport-js library: ${error}`);
+                throw new Error(`Failed to initialize xport-js library: ${error}`);
             }
         }
-        return this.xportJs;
+        return this.library;
     }
 
     /**
@@ -89,17 +90,16 @@ export class XPTReader {
             return this.metadata;
         }
 
-        const xport = await this.loadXportJs();
-        const fileBuffer = fs.readFileSync(this.filePath);
-
         try {
-            // Parse the XPT file metadata
-            const xptMetadata: XportMetadata = xport.getMetadata(fileBuffer);
+            const lib = await this.getLibrary();
 
-            // XPT files can contain multiple members (datasets), we'll use the first one
-            const member = xptMetadata.members[0];
+            // Get metadata from the library
+            const xptMetadata: XportLibraryMetadata = await lib.getMetadata();
 
-            if (!member) {
+            // XPT files can contain multiple datasets, we'll use the first one
+            const dataset = xptMetadata.datasets[0];
+
+            if (!dataset) {
                 throw new Error('No datasets found in XPT file');
             }
 
@@ -108,17 +108,17 @@ export class XPTReader {
 
             this.metadata = {
                 rowCount: records.length,
-                columnCount: member.variables.length,
-                variables: member.variables.map(v => ({
+                columnCount: dataset.variables.length,
+                variables: dataset.variables.map(v => ({
                     name: v.name,
                     label: v.label || v.name,
                     type: v.type === 1 ? 'number' : 'string',
                     length: v.length,
                     format: v.format
                 })),
-                createdDate: member.created,
-                modifiedDate: member.modified,
-                label: member.label || member.name
+                createdDate: dataset.created,
+                modifiedDate: dataset.modified,
+                label: dataset.label || dataset.name
             };
 
             return this.metadata;
@@ -135,14 +135,12 @@ export class XPTReader {
             return this.allData;
         }
 
-        const xport = await this.loadXportJs();
-        const fileBuffer = fs.readFileSync(this.filePath);
-
         try {
+            const lib = await this.getLibrary();
             const records: DataRow[] = [];
 
-            // Use async iterator to read records
-            for await (const record of xport.readRecords(fileBuffer)) {
+            // Use async iterator to read records as objects
+            for await (const record of lib.read({ rowFormat: 'object' })) {
                 records.push(record);
             }
 
