@@ -3,8 +3,8 @@ const Library = require('xport-js').default;
 
 async function testV5() {
     try {
-        console.log('Testing sashelp_cars.xpt...');
-        const lib = new Library('C:\\Python\\test\\sashelp_cars.xpt');
+        console.log('Testing cars_v5.xpt...');
+        const lib = new Library('C:\\Python\\test\\cars_v5.xpt');
 
         console.log('\nGetting metadata...');
         const metadata = await lib.getMetadata();

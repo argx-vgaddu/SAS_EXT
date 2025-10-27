@@ -388,7 +388,17 @@ export class XPTReader {
      * Evaluate a condition against a record
      */
     private evaluateCondition(record: DataRow, condition: any): boolean {
-        const value = record[condition.variable];
+        // Find the actual column name (case-insensitive match)
+        const actualColumnName = Object.keys(record).find(
+            key => key.toUpperCase() === condition.variable.toUpperCase()
+        );
+
+        if (!actualColumnName) {
+            console.warn(`[XPTReader] Column '${condition.variable}' not found in record`);
+            return false;
+        }
+
+        const value = record[actualColumnName];
         const targetValue = condition.value;
 
         switch (condition.operator) {
@@ -414,10 +424,24 @@ export class XPTReader {
      */
     async getUniqueValues(columnName: string, includeCount: boolean = false): Promise<any[]> {
         const records = await this.readAllRecords();
+        if (records.length === 0) {
+            return [];
+        }
+
+        // Find the actual column name (case-insensitive match)
+        const actualColumnName = Object.keys(records[0]).find(
+            key => key.toUpperCase() === columnName.toUpperCase()
+        );
+
+        if (!actualColumnName) {
+            console.warn(`[XPTReader] Column '${columnName}' not found`);
+            return [];
+        }
+
         const uniqueMap = new Map<any, number>();
 
         for (const record of records) {
-            const value = record[columnName];
+            const value = record[actualColumnName];
             uniqueMap.set(value, (uniqueMap.get(value) || 0) + 1);
         }
 
@@ -433,15 +457,34 @@ export class XPTReader {
      */
     async getUniqueCombinations(columnNames: string[], includeCount: boolean = false): Promise<any[]> {
         const records = await this.readAllRecords();
+        if (records.length === 0) {
+            return [];
+        }
+
+        // Find actual column names (case-insensitive match)
+        const actualColumnNames = columnNames.map(colName => {
+            const actual = Object.keys(records[0]).find(
+                key => key.toUpperCase() === colName.toUpperCase()
+            );
+            if (!actual) {
+                console.warn(`[XPTReader] Column '${colName}' not found`);
+            }
+            return actual;
+        }).filter(Boolean) as string[];
+
+        if (actualColumnNames.length === 0) {
+            return [];
+        }
+
         const uniqueMap = new Map<string, any>();
 
         for (const record of records) {
-            const values = columnNames.map(col => record[col]);
+            const values = actualColumnNames.map(col => record[col]);
             const key = JSON.stringify(values);
 
             if (!uniqueMap.has(key)) {
                 const combination: any = {};
-                columnNames.forEach(col => {
+                actualColumnNames.forEach(col => {
                     combination[col] = record[col];
                 });
                 if (includeCount) {
