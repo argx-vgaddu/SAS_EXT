@@ -1,3 +1,5 @@
+import * as vscode from 'vscode';
+
 /**
  * Represents a SAS variable with its metadata
  */
@@ -58,4 +60,15 @@ export interface FilterState {
     selectedVariables: string[];
     whereClause: string;
     variableOrder: string[];
+}
+
+/**
+ * Common interface for dataset documents (SAS7BDAT and XPT)
+ */
+export interface IDatasetDocument extends vscode.CustomDocument {
+    metadata: SASMetadata | null;
+    getData(request: SASDataRequest): Promise<SASDataResponse>;
+    getFilteredRowCount(whereClause: string): Promise<number>;
+    getUniqueValues(columnName: string, includeCount?: boolean): Promise<any[]>;
+    getUniqueCombinations(columnNames: string[], includeCount?: boolean): Promise<any[]>;
 }

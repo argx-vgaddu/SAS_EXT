@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { SASDatasetDocument } from './SasDataProvider';
-import { WebviewMessage, FilterState, SASDataRequest } from './types';
+import { WebviewMessage, FilterState, SASDataRequest, IDatasetDocument } from './types';
 import { getPaginationHTML } from './PaginationWebview';
 import { Logger } from './utils/logger';
 
@@ -18,7 +18,7 @@ export class SASWebviewPanel {
 
     constructor(
         private readonly panel: vscode.WebviewPanel,
-        private readonly document: SASDatasetDocument,
+        private readonly document: IDatasetDocument,
         private readonly context: vscode.ExtensionContext
     ) {
         this.filterState = {

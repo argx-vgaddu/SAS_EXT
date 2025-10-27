@@ -1,27 +1,32 @@
 # SAS Dataset Viewer for VS Code
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
+A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
 
 ## ✨ Features
 
 ### 📊 **Dataset Viewing**
 
-- Open and view SAS7BDAT files directly in VS Code
+- Open and view SAS7BDAT and XPT (XPORT) files directly in VS Code
 - Professional tabular display with pagination
 - Support for large datasets (tested with 12,000+ rows)
 - Real-time data loading with visual feedback
+- **Full XPT/XPORT support**:
+  - v5/v6 files (FDA submissions): Native TypeScript reader for maximum speed (~1.5s load time)
+  - v8/v9 files (modern SAS): Automatic Python fallback with pyreadstat
+  - Smart header-based version detection for instant format recognition
+  - Automatic label row skipping for clean data display
 
 ### 🔍 **Advanced Filtering**
 
 - **WHERE Clause Filtering**: Use SAS-style WHERE conditions
-  - Case-insensitive variable names
+  - **Fully case-insensitive**: `age > 30` works the same as `AGE > 30`
   - Support for operators: `=`, `>`, `<`, `>=`, `<=`, `!=`
   - Logical operators: `AND`, `OR`, `&`, `|`
-  - Example: `AGE > 30 AND COUNTRY = 'USA'`
+  - Example: `AGE > 30 AND COUNTRY = 'USA'` or `age > 30 and country = 'USA'`
 
 ### 📝 **Variable Management**
 
@@ -61,9 +66,12 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 - Native TypeScript reader using js-stream-sas7bdat library
 - Metadata extraction in ~1ms (vs 730ms in v1.0)
 - Data reading in <1ms (vs 605ms in v1.0)
+- **Optimized XPT loading**: v5/v6 files load in ~1.5s (down from 10+ seconds)
+- Efficient row counting: 400+ rows counted in ~16ms
 - Smart caching for filtered results
 - Automatic Python fallback for edge cases
 - Optimized pagination (50, 100, 200, 500 rows per page)
+- Fast extension activation (output channel on-demand only)
 - Professional logging system with debug mode
 
 ## 📋 Requirements
@@ -88,9 +96,11 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT dataset files di
 
 ### Opening SAS Datasets
 
-1. **File Explorer**: Simply click on any `.sas7bdat` file
-2. **Command Palette**: Use `SAS: Open SAS Dataset` command
-3. **File Menu**: File → Open → Select .sas7bdat file
+1. **File Explorer**: Simply click on any `.sas7bdat` or `.xpt` file
+2. **Command Palette**:
+   - Use `SAS: Open SAS Dataset` command for .sas7bdat files
+   - Use `SAS: Open SAS XPT File` command for .xpt files
+3. **File Menu**: File → Open → Select .sas7bdat or .xpt file
 
 ### Filtering Data
 
@@ -129,7 +139,8 @@ This extension contributes the following settings:
 
 This extension contributes the following commands:
 
-- `SAS: Open SAS Dataset`: Open a SAS dataset file
+- `SAS: Open SAS Dataset`: Open a SAS7BDAT dataset file
+- `SAS: Open SAS XPT File`: Open a SAS XPT (XPORT) transport file
 - `SAS Dataset Viewer: Show Output`: Display the output channel for debugging
 
 ## 🐛 Known Issues
@@ -139,7 +150,46 @@ This extension contributes the following commands:
 
 ## 📝 Release Notes
 
-### 2.0.1 (Current)
+### 2.2.0 (Current)
+
+- **Major XPT Performance Improvements**:
+  - Smart header-based version detection (v5/v6 vs v8/v9)
+  - Reduced v5/v6 XPT load time from 10+ seconds to ~1.5 seconds
+  - Efficient row counting with streaming (16ms for 400+ rows)
+  - User-friendly v8/v9 format notifications
+- **Enhancement**: Fully case-insensitive WHERE clause filtering
+  - Column names are matched case-insensitively in all filter operations
+  - Example: `age > 30` works the same as `AGE > 30`
+- **Enhancement**: Automatic label row detection and skipping
+  - XPT files with header/label rows now display correctly
+  - First data row shows actual data instead of label text
+- **Performance**: Faster extension activation
+  - Output channel opens on-demand only (via command)
+  - Reduced startup time
+- **Fix**: Accurate pagination for XPT files
+  - Page numbers now display correctly (e.g., "Page 1 of 9" instead of "Page 1 of 0")
+  - Row counts are calculated upfront for proper navigation
+
+### 2.1.0
+
+- **New Feature**: Full support for SAS XPT (XPORT) transport files
+  - Read and view XPT files (v5/v6 format)
+  - Same filtering and analysis features as SAS7BDAT files
+  - Integrated with xport-js library
+- **Enhancement**: Common interface for dataset documents
+- **Enhancement**: New command for opening XPT files
+
+### 2.0.3
+
+- **Fix**: Removed problematic nul file from package
+- **Clean**: Safe VSIX package for extraction
+
+### 2.0.2
+
+- **Documentation**: Added proper acknowledgments for js-stream-sas7bdat library
+- **Version**: Incremented to avoid marketplace conflict
+
+### 2.0.1
 
 - **UI Redesign**: Cleaner interface with improved layout
   - Removed redundant dataset name displays
@@ -171,7 +221,10 @@ MIT License - see LICENSE file for details
 
 ## 🙏 Acknowledgments
 
-- Uses [pyreadstat](https://github.com/Roche/pyreadstat) for reading SAS files
+- **[js-stream-sas7bdat](https://www.npmjs.com/package/js-stream-sas7bdat)** - Primary TypeScript library for native SAS7BDAT file reading, providing 600x performance improvement
+- **[xport-js](https://www.npmjs.com/package/xport-js)** - Native TypeScript library for reading XPT v5/v6 files with optimal performance
+- **[pyreadstat](https://github.com/Roche/pyreadstat)** - Python fallback library for XPT v8/v9 files and advanced metadata extraction
+- **[pandas](https://pandas.pydata.org/)** - Data manipulation for Python fallback mode
 - Built with the VS Code Extension API
 
 ---

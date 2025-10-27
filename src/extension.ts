@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import { SASDatasetProvider } from './SasDataProvider';
+import { XPTDatasetProvider } from './XptDataProvider';
 import { SASWebviewPanel } from './WebviewPanel';
 import { Logger } from './utils/logger';
 
@@ -12,12 +13,24 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.initialize('SAS Dataset Viewer');
     Logger.info('Extension activating...');
 
-    const provider = new SASDatasetProvider(context);
+    const sasProvider = new SASDatasetProvider(context);
+    const xptProvider = new XPTDatasetProvider(context);
 
-    // Register custom editor provider
-    const disposable = vscode.window.registerCustomEditorProvider(
+    // Register custom editor providers
+    const sasDisposable = vscode.window.registerCustomEditorProvider(
         'sasDatasetViewer.sas7bdat',
-        provider,
+        sasProvider,
+        {
+            webviewOptions: {
+                retainContextWhenHidden: true,
+            },
+            supportsMultipleEditorsPerDocument: false,
+        }
+    );
+
+    const xptDisposable = vscode.window.registerCustomEditorProvider(
+        'sasDatasetViewer.xpt',
+        xptProvider,
         {
             webviewOptions: {
                 retainContextWhenHidden: true,
@@ -54,15 +67,35 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // Register command to open XPT file
+    const openXPTCommand = vscode.commands.registerCommand(
+        'sasDatasetViewer.openXPT',
+        async () => {
+            const options: vscode.OpenDialogOptions = {
+                canSelectMany: false,
+                openLabel: 'Open SAS XPT File',
+                filters: {
+                    'SAS XPT Files': ['xpt']
+                }
+            };
+
+            const fileUri = await vscode.window.showOpenDialog(options);
+            if (fileUri && fileUri[0]) {
+                await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDatasetViewer.xpt');
+            }
+        }
+    );
+
     // Add disposables to context for proper cleanup
-    context.subscriptions.push(disposable, openCommand, showOutputCommand);
+    context.subscriptions.push(sasDisposable, xptDisposable, openCommand, openXPTCommand, showOutputCommand);
 
     // Ensure logger is disposed when extension deactivates
     context.subscriptions.push({ dispose: () => Logger.dispose() });
 
     Logger.info('Extension activated successfully');
     Logger.info('TypeScript reader v2.0.0 with improved WHERE clause filtering');
-    Logger.show(); // Automatically show output on activation for visibility
+    Logger.info('XPT file support enabled');
+    // Logger is available via command: "SAS Dataset Viewer: Show Output"
 }
 
 /**
