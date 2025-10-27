@@ -229,10 +229,27 @@ export class XPTReader {
         try {
             const lib = await this.getLibrary();
             let count = 0;
+            let rowIndex = 0;
 
             // Just iterate to count, don't store data
-            for await (const _ of lib.read({ rowFormat: 'object' })) {
+            for await (const record of lib.read({ rowFormat: 'object' })) {
+                // Skip first row if it contains label text
+                if (rowIndex === 0) {
+                    const values = Object.values(record);
+                    const hasLabelText = values.some(v =>
+                        typeof v === 'string' &&
+                        v.includes('(') &&
+                        v.includes(')')
+                    );
+
+                    if (hasLabelText) {
+                        rowIndex++;
+                        continue;
+                    }
+                }
+
                 count++;
+                rowIndex++;
             }
 
             return count;
@@ -256,14 +273,34 @@ export class XPTReader {
 
             console.log('[XPTReader] Starting to read records...');
 
+            let rowIndex = 0;
             // Use async iterator to read records as objects
             for await (const record of lib.read({ rowFormat: 'object' })) {
+                // Skip first row if it contains label text instead of actual data
+                // Some XPT files have a header row with labels in the data
+                if (rowIndex === 0) {
+                    // Check if this looks like a label row (has parentheses which labels often have)
+                    const values = Object.values(record);
+                    const hasLabelText = values.some(v =>
+                        typeof v === 'string' &&
+                        v.includes('(') &&
+                        v.includes(')')
+                    );
+
+                    if (hasLabelText) {
+                        console.log('[XPTReader] Skipping first row containing label text');
+                        rowIndex++;
+                        continue;
+                    }
+                }
+
                 records.push(record);
+                rowIndex++;
             }
 
-            console.log(`[XPTReader] Read ${records.length} records`);
+            console.log(`[XPTReader] Read ${records.length} data records`);
             if (records.length > 0) {
-                console.log('[XPTReader] First record sample:', JSON.stringify(records[0], null, 2));
+                console.log('[XPTReader] First data record sample:', JSON.stringify(records[0], null, 2));
             }
 
             this.allData = records;
