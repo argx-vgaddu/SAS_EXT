@@ -1,6 +1,6 @@
 # SAS Dataset Viewer for VS Code
 
-![Version](https://img.shields.io/badge/version-2.1.0-blue)
+![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -15,17 +15,18 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) 
 - Support for large datasets (tested with 12,000+ rows)
 - Real-time data loading with visual feedback
 - **Full XPT/XPORT support**:
-  - v5/v6 files (FDA submissions): Native TypeScript reader for maximum speed
-  - v8/v9 files (modern SAS): Python fallback with pyreadstat
-  - Automatic version detection and optimal reader selection
+  - v5/v6 files (FDA submissions): Native TypeScript reader for maximum speed (~1.5s load time)
+  - v8/v9 files (modern SAS): Automatic Python fallback with pyreadstat
+  - Smart header-based version detection for instant format recognition
+  - Automatic label row skipping for clean data display
 
 ### 🔍 **Advanced Filtering**
 
 - **WHERE Clause Filtering**: Use SAS-style WHERE conditions
-  - Case-insensitive variable names
+  - **Fully case-insensitive**: `age > 30` works the same as `AGE > 30`
   - Support for operators: `=`, `>`, `<`, `>=`, `<=`, `!=`
   - Logical operators: `AND`, `OR`, `&`, `|`
-  - Example: `AGE > 30 AND COUNTRY = 'USA'`
+  - Example: `AGE > 30 AND COUNTRY = 'USA'` or `age > 30 and country = 'USA'`
 
 ### 📝 **Variable Management**
 
@@ -65,9 +66,12 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) 
 - Native TypeScript reader using js-stream-sas7bdat library
 - Metadata extraction in ~1ms (vs 730ms in v1.0)
 - Data reading in <1ms (vs 605ms in v1.0)
+- **Optimized XPT loading**: v5/v6 files load in ~1.5s (down from 10+ seconds)
+- Efficient row counting: 400+ rows counted in ~16ms
 - Smart caching for filtered results
 - Automatic Python fallback for edge cases
 - Optimized pagination (50, 100, 200, 500 rows per page)
+- Fast extension activation (output channel on-demand only)
 - Professional logging system with debug mode
 
 ## 📋 Requirements
@@ -146,7 +150,27 @@ This extension contributes the following commands:
 
 ## 📝 Release Notes
 
-### 2.1.0 (Current)
+### 2.2.0 (Current)
+
+- **Major XPT Performance Improvements**:
+  - Smart header-based version detection (v5/v6 vs v8/v9)
+  - Reduced v5/v6 XPT load time from 10+ seconds to ~1.5 seconds
+  - Efficient row counting with streaming (16ms for 400+ rows)
+  - User-friendly v8/v9 format notifications
+- **Enhancement**: Fully case-insensitive WHERE clause filtering
+  - Column names are matched case-insensitively in all filter operations
+  - Example: `age > 30` works the same as `AGE > 30`
+- **Enhancement**: Automatic label row detection and skipping
+  - XPT files with header/label rows now display correctly
+  - First data row shows actual data instead of label text
+- **Performance**: Faster extension activation
+  - Output channel opens on-demand only (via command)
+  - Reduced startup time
+- **Fix**: Accurate pagination for XPT files
+  - Page numbers now display correctly (e.g., "Page 1 of 9" instead of "Page 1 of 0")
+  - Row counts are calculated upfront for proper navigation
+
+### 2.1.0
 
 - **New Feature**: Full support for SAS XPT (XPORT) transport files
   - Read and view XPT files (v5/v6 format)
@@ -198,7 +222,8 @@ MIT License - see LICENSE file for details
 ## 🙏 Acknowledgments
 
 - **[js-stream-sas7bdat](https://www.npmjs.com/package/js-stream-sas7bdat)** - Primary TypeScript library for native SAS7BDAT file reading, providing 600x performance improvement
-- **[pyreadstat](https://github.com/Roche/pyreadstat)** - Python fallback library for edge cases and advanced metadata extraction
+- **[xport-js](https://www.npmjs.com/package/xport-js)** - Native TypeScript library for reading XPT v5/v6 files with optimal performance
+- **[pyreadstat](https://github.com/Roche/pyreadstat)** - Python fallback library for XPT v8/v9 files and advanced metadata extraction
 - **[pandas](https://pandas.pydata.org/)** - Data manipulation for Python fallback mode
 - Built with the VS Code Extension API
 
