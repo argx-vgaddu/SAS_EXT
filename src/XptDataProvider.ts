@@ -53,6 +53,7 @@ export class XPTDatasetProvider implements vscode.CustomReadonlyEditorProvider<X
 export class XPTDatasetDocument implements IDatasetDocument {
     private readonly logger = Logger.createScoped('XPTDatasetDocument');
     private reader: XPTReader | null = null;
+    private static v8NotificationShown = false; // Track if we've shown the v8 notification this session
 
     private constructor(
         public readonly uri: vscode.Uri,
@@ -93,8 +94,24 @@ export class XPTDatasetDocument implements IDatasetDocument {
                     dataset_label: this.metadata?.dataset_label
                 });
 
-            } catch (tsError) {
-                this.logger.warn('TypeScript XPT reader failed, falling back to Python (likely v8 file)', tsError);
+            } catch (tsError: any) {
+                // Check if this is a v8 file (expected behavior)
+                const isV8File = tsError?.message?.includes('v8/v9 XPT file');
+
+                if (isV8File) {
+                    this.logger.info('XPT v8/v9 format detected - using Python reader for full compatibility');
+
+                    // Show a friendly info message to the user (only once per session)
+                    if (!XPTDatasetDocument.v8NotificationShown) {
+                        XPTDatasetDocument.v8NotificationShown = true;
+                        vscode.window.showInformationMessage(
+                            'XPT v8/v9 format detected. Using Python reader for compatibility (this may take a moment to load).'
+                        );
+                    }
+                } else {
+                    // Unexpected error - log with more detail
+                    this.logger.warn('TypeScript XPT reader failed, falling back to Python', tsError);
+                }
 
                 // Fallback to Python for v8/v9 files
                 this.metadata = await this.executePythonCommand('metadata', this.uri.fsPath);

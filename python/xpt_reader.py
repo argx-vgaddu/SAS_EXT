@@ -16,17 +16,30 @@ except ImportError:
 
 
 def get_metadata(file_path):
-    """Get metadata from XPT file"""
+    """Get metadata from XPT file including row count"""
     try:
         if HAS_PYREADSTAT:
-            # Use pyreadstat for better metadata support
+            # Read the full file to get accurate row count and metadata
+            # XPT files are typically small (FDA submissions), so this is acceptable
             df, meta = pyreadstat.read_xport(file_path)
 
             # Get variable information with proper labels
             variables = []
-            for i, col in enumerate(df.columns):
-                dtype = str(df[col].dtype)
-                var_type = 'character' if dtype == 'object' else 'numeric'
+
+            # Use column_names from meta if available, otherwise from df
+            column_names = meta.column_names if hasattr(meta, 'column_names') else df.columns.tolist()
+
+            for i, col in enumerate(column_names):
+                # Determine type from metadata or df
+                var_type = 'numeric'  # Default to numeric
+                if hasattr(meta, 'readstat_variable_types') and col in meta.readstat_variable_types:
+                    var_type = 'character' if meta.readstat_variable_types[col] == 'string' else 'numeric'
+                elif hasattr(meta, 'original_variable_types') and col in meta.original_variable_types:
+                    # Some versions use original_variable_types
+                    var_type = meta.original_variable_types[col]
+                elif df is not None and col in df.columns:
+                    dtype = str(df[col].dtype)
+                    var_type = 'character' if dtype == 'object' else 'numeric'
 
                 # Get label from metadata if available
                 label = meta.column_labels[i] if meta.column_labels and i < len(meta.column_labels) else col
@@ -37,18 +50,22 @@ def get_metadata(file_path):
                     'label': label,
                     'format': '',
                     'length': 8 if var_type == 'numeric' else 200,
-                    'dtype': dtype
+                    'dtype': 'object' if var_type == 'character' else 'float64'
                 })
 
+            # Get actual row count from the loaded dataframe
+            row_count = len(df) if df is not None else 0
+
             metadata = {
-                'total_rows': len(df),
-                'total_variables': len(df.columns),
+                'total_rows': row_count,
+                'total_variables': len(variables),
                 'variables': variables,
                 'file_path': file_path,
                 'dataset_label': meta.table_name if hasattr(meta, 'table_name') and meta.table_name else Path(file_path).stem
             }
         else:
-            # Fallback to pandas
+            # Fallback: pandas doesn't have metadata-only mode, so we have to read the file
+            # But we can at least read it just once
             df = pd.read_sas(file_path, format='xport')
 
             variables = []

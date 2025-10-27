@@ -63,23 +63,42 @@ export class XPTReader {
     private allData: DataRow[] | null = null;
     private library: any = null;
     private usePythonFallback: boolean = false;
+    private actualRowCount: number | null = null; // Cache actual row count once computed
 
     constructor(filePath: string) {
         this.filePath = filePath;
     }
 
     /**
-     * Check if file is XPORT V8 (not supported by xport-js)
+     * Check if file is XPORT V8/V9 (not supported by xport-js)
+     * xport-js only supports v5/v6 files (identified by "HEADER RECORD" without "LIBV8")
      */
     private async isXportV8(): Promise<boolean> {
         try {
             const fs = await import('fs');
             const buffer = fs.readFileSync(this.filePath);
-            const header = buffer.toString('latin1', 0, 80);
-            // Check if header contains LIBV8 or LIBV9
-            return header.includes('LIBV8') || header.includes('LIBV9');
+            const header = buffer.toString('latin1', 0, 200);
+
+            console.log('[XPTReader] Checking XPT version...');
+
+            // Check if header contains LIBV8 or LIBV9 - these are NOT supported by xport-js
+            if (header.includes('LIBV8') || header.includes('LIBV9')) {
+                console.log('[XPTReader] Detected v8/v9 XPT file (LIBV8/LIBV9 found)');
+                return true;
+            }
+
+            // v5/v6 files should have "HEADER RECORD" and "LIBRARY HEADER RECORD"
+            if (header.includes('HEADER RECORD') && header.includes('LIBRARY HEADER RECORD')) {
+                console.log('[XPTReader] Detected v5/v6 XPT file (supported by xport-js)');
+                return false;
+            }
+
+            // If we can't identify the format, assume it's not v8 and let xport-js try
+            console.log('[XPTReader] Unknown XPT format, will attempt to read with xport-js');
+            return false;
         } catch (error) {
             console.error('[XPTReader] Error checking XPT version:', error);
+            // If we can't read the file, return false and let the actual read attempt fail with a better error
             return false;
         }
     }
@@ -107,57 +126,119 @@ export class XPTReader {
             return this.metadata;
         }
 
+        // Check if this is a v8 file BEFORE trying to use xport-js
+        const isV8 = await this.isXportV8();
+        if (isV8) {
+            throw new Error('This is a v8/v9 XPT file which is not supported by xport-js. Use Python fallback.');
+        }
+
         try {
             const lib = await this.getLibrary();
 
             // Get metadata from the library
             console.log('[XPTReader] Calling lib.getMetadata()...');
-            const xptMetadata = await lib.getMetadata();
-            console.log('[XPTReader] Metadata received:', JSON.stringify(xptMetadata, null, 2));
+            let xptMetadata: any;
 
-            if (!xptMetadata) {
+            try {
+                xptMetadata = await lib.getMetadata();
+                console.log('[XPTReader] Metadata type:', typeof xptMetadata);
+                console.log('[XPTReader] Metadata is array:', Array.isArray(xptMetadata));
+                console.log('[XPTReader] Metadata keys:', xptMetadata ? Object.keys(xptMetadata) : 'null');
+                console.log('[XPTReader] Full metadata:', JSON.stringify(xptMetadata, null, 2));
+            } catch (metaError: any) {
+                console.error('[XPTReader] Error calling getMetadata():', metaError);
+                console.error('[XPTReader] Stack:', metaError?.stack);
+                throw new Error(`xport-js getMetadata() failed: ${metaError?.message || metaError}`);
+            }
+
+            if (!xptMetadata || xptMetadata === null || xptMetadata === undefined) {
                 throw new Error('getMetadata() returned null or undefined');
             }
 
-            // XPT metadata structure may vary - check for datasets property
-            let dataset: any;
-            if (xptMetadata.datasets && xptMetadata.datasets.length > 0) {
-                dataset = xptMetadata.datasets[0];
-            } else if (Array.isArray(xptMetadata) && xptMetadata.length > 0) {
-                dataset = xptMetadata[0];
+            // xport-js returns an array of variable metadata directly
+            // Each element looks like: { dataset: "NAME", name: "VAR", label: "...", length: N, type: "Char"|"Num", format?: "..." }
+            let variables: any[];
+            let datasetName = 'Unknown';
+
+            if (Array.isArray(xptMetadata) && xptMetadata.length > 0) {
+                console.log('[XPTReader] Metadata is array of', xptMetadata.length, 'variables');
+                variables = xptMetadata;
+                // Get dataset name from first variable if available
+                if (xptMetadata[0].dataset) {
+                    datasetName = xptMetadata[0].dataset;
+                }
+            } else if (xptMetadata.variables && Array.isArray(xptMetadata.variables)) {
+                // Fallback: maybe it's wrapped in an object
+                console.log('[XPTReader] Metadata has variables array with', xptMetadata.variables.length, 'items');
+                variables = xptMetadata.variables;
+                datasetName = xptMetadata.name || xptMetadata.dataset || 'Unknown';
+            } else if (xptMetadata.datasets && Array.isArray(xptMetadata.datasets) && xptMetadata.datasets.length > 0) {
+                // Another fallback: datasets array structure
+                console.log('[XPTReader] Found datasets array');
+                const dataset = xptMetadata.datasets[0];
+                variables = dataset.variables || [];
+                datasetName = dataset.name || dataset.dataset || 'Unknown';
             } else {
-                // Maybe the metadata IS the dataset
-                dataset = xptMetadata;
+                console.error('[XPTReader] Unknown metadata structure. Keys:', Object.keys(xptMetadata || {}));
+                console.error('[XPTReader] Type:', typeof xptMetadata);
+                console.error('[XPTReader] Is array:', Array.isArray(xptMetadata));
+                throw new Error('Unable to extract variable metadata from xport-js response');
             }
 
-            if (!dataset) {
-                throw new Error('No datasets found in XPT metadata structure');
+            if (!variables || variables.length === 0) {
+                throw new Error('No variables found in XPT metadata');
             }
 
-            console.log('[XPTReader] Using dataset:', JSON.stringify(dataset, null, 2));
+            console.log('[XPTReader] Found', variables.length, 'variables in dataset:', datasetName);
+            console.log('[XPTReader] First variable:', JSON.stringify(variables[0], null, 2));
 
-            // Count rows by reading the data (XPT files are typically smaller)
-            const records = await this.readAllRecords();
+            // Count rows efficiently by iterating without storing data
+            console.log('[XPTReader] Counting rows using efficient iteration...');
+            const startCount = Date.now();
+            const rowCount = await this.countRows();
+            const countElapsed = Date.now() - startCount;
+            console.log(`[XPTReader] Counted ${rowCount} rows in ${countElapsed}ms`);
 
             this.metadata = {
-                rowCount: records.length,
-                columnCount: dataset.variables?.length || 0,
-                variables: (dataset.variables || []).map((v: any) => ({
-                    name: v.name,
-                    label: v.label || v.name,
-                    type: v.type === 1 ? 'number' : 'string',
-                    length: v.length,
+                rowCount: rowCount,
+                columnCount: variables.length,
+                variables: variables.map((v: any) => ({
+                    name: v.name || 'UNKNOWN',
+                    label: v.label || '',
+                    type: (v.type === 'Num' || v.type === 1) ? 'number' : 'string',
+                    length: v.length || 0,
                     format: v.format
                 })),
-                createdDate: dataset.created,
-                modifiedDate: dataset.modified,
-                label: dataset.label || dataset.name || 'Unknown'
+                createdDate: undefined,
+                modifiedDate: undefined,
+                label: datasetName
             };
 
             return this.metadata;
-        } catch (error) {
+        } catch (error: any) {
             console.error('[XPTReader] Error in getMetadata:', error);
-            throw new Error(`Failed to read XPT metadata: ${error}`);
+            console.error('[XPTReader] Error stack:', error?.stack);
+            throw new Error(`Failed to read XPT metadata: ${error?.message || error}`);
+        }
+    }
+
+    /**
+     * Count rows without storing data (faster than readAllRecords)
+     */
+    private async countRows(): Promise<number> {
+        try {
+            const lib = await this.getLibrary();
+            let count = 0;
+
+            // Just iterate to count, don't store data
+            for await (const _ of lib.read({ rowFormat: 'object' })) {
+                count++;
+            }
+
+            return count;
+        } catch (error) {
+            console.error('[XPTReader] Error counting rows:', error);
+            return 0;
         }
     }
 
@@ -186,6 +267,8 @@ export class XPTReader {
             }
 
             this.allData = records;
+            this.actualRowCount = records.length;
+
             return records;
         } catch (error) {
             console.error('[XPTReader] Error reading records:', error);
