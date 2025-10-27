@@ -95,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.info('Extension activated successfully');
     Logger.info('TypeScript reader v2.0.0 with improved WHERE clause filtering');
     Logger.info('XPT file support enabled');
-    Logger.show(); // Automatically show output on activation for visibility
+    // Logger is available via command: "SAS Dataset Viewer: Show Output"
 }
 
 /**
