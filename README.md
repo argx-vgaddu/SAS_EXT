@@ -8,7 +8,7 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) 
 
 ## 📥 Installation
 
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=argx.sas-dataset-viewer)
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-dataset-viewer)
 
 Or search for "SAS Dataset Viewer" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
 
