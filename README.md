@@ -6,6 +6,12 @@
 
 A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
 
+## 📥 Installation
+
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=argx.sas-dataset-viewer)
+
+Or search for "SAS Dataset Viewer" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
+
 ## ✨ Features
 
 ### 📊 **Dataset Viewing**
