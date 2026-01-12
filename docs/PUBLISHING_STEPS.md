@@ -13,7 +13,10 @@
 
 3. **Publisher Account**:
    - Create a publisher at https://marketplace.visualstudio.com/manage
-   - Get a Personal Access Token from Azure DevOps
+   - Get a Personal Access Token from Azure DevOps:
+     - Direct link: https://dev.azure.com/vgaddu/_usersSettings/tokens
+     - Create token with "Marketplace: Manage" scope
+   - PAT is stored in `.env` file as `MSF_PAT`
 
 ## Step-by-Step Publishing Process
 
@@ -58,15 +61,16 @@ Install the .vsix file in VS Code to test:
 
 ```bash
 # Login to your publisher account
-vsce login <publisher-name>
+vsce login anovagroups
+# Enter PAT from .env (MSF_PAT) when prompted
 
 # Publish the extension
-vsce publish
+npx vsce publish
 
 # Or publish with version increment
-vsce publish minor  # Increments to 0.2.0
-vsce publish major  # Increments to 1.0.0
-vsce publish patch  # Increments to 0.1.4
+npx vsce publish minor  # Increments minor version
+npx vsce publish major  # Increments major version
+npx vsce publish patch  # Increments patch version
 ```
 
 ### 6. Alternative: Manual Upload
@@ -122,4 +126,15 @@ Before each publish:
 1. Update version in `package.json`
 2. Update `CHANGELOG.md` with new changes
 3. Commit all changes to git
-4. Create a git tag for the version: `git tag v0.1.3`
+4. Create a git tag for the version: `git tag v2.2.0`
+5. Push to GitHub (requires GitHub PAT, separate from Azure DevOps PAT)
+
+## Quick Publish Commands
+
+```bash
+# Build and publish in one go
+npm run compile && npx vsce publish
+
+# Verify PAT is valid
+npx vsce verify-pat anovagroups
+```

@@ -16,7 +16,7 @@
   - [x] Variable Metadata modal
 
 ### ✅ Package Configuration
-- [x] Version updated to 2.0.1
+- [x] Version updated to 2.2.0
 - [x] Publisher set: `anovagroups`
 - [x] Repository URLs updated
 - [x] Icon file present (icon.png)
@@ -26,7 +26,7 @@
 
 ### ✅ Documentation
 - [x] README.md updated with features
-- [x] CHANGELOG.md updated for v2.0.1
+- [x] CHANGELOG.md updated for v2.2.0
 - [x] LICENSE file present (MIT)
 - [x] CLAUDE.md with development notes
 
@@ -59,9 +59,10 @@ If not already done:
 1. Go to https://marketplace.visualstudio.com/manage
 2. Create publisher: `anovagroups`
 3. Get Personal Access Token from Azure DevOps:
-   - https://dev.azure.com/
-   - User Settings > Personal Access Tokens
+   - Direct link: https://dev.azure.com/vgaddu/_usersSettings/tokens
+   - Or: Azure DevOps > User Settings > Personal Access Tokens
    - New Token with "Marketplace: Manage" scope
+   - PAT is stored in `.env` file as `MSF_PAT` (not committed to git)
 
 ### 3. Login to Publisher
 ```bash
@@ -110,7 +111,7 @@ vsce publish --packagePath sas-data-explorer-x.x.x.vsix
 - **Size**: ~1.5 MB
 - **Min VS Code**: 1.74.0
 
-## Key Features in v2.0.1
+## Key Features in v2.2.0
 - 600x faster TypeScript-first architecture
 - Unique values extraction with counts
 - Dataset Metadata modal
