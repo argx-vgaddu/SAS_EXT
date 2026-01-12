@@ -35,3 +35,7 @@ test_data/*.sas7bdat
 
 # Claude context
 .claude/.env
+
+# Environment and local settings
+.env
+settings.local.json
