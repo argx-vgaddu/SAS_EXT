@@ -11,7 +11,7 @@ import { XPTReader, DatasetMetadata, DataRow } from './readers/XPTReader';
  * Handles the lifecycle of XPT dataset documents and their associated webview editors
  */
 export class XPTDatasetProvider implements vscode.CustomReadonlyEditorProvider<XPTDatasetDocument> {
-    private static readonly viewType = 'sasDatasetViewer.xpt';
+    private static readonly viewType = 'sasDataExplorer.xpt';
     private readonly logger = Logger.createScoped('XPTDatasetProvider');
 
     constructor(

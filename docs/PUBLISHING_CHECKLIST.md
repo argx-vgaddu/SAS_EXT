@@ -1,4 +1,4 @@
-# Publishing Checklist for SAS Dataset Viewer v2.0.1
+# Publishing Checklist for SAS Data Explorer
 
 ## Pre-Publishing Verification
 
@@ -51,7 +51,7 @@ npm run compile
 
 # Package the extension
 vsce package
-# Output: sas-dataset-viewer-2.0.1.vsix (1.46 MB)
+# Output: sas-data-explorer-x.x.x.vsix
 ```
 
 ### 2. Publisher Account Setup
@@ -75,19 +75,19 @@ vsce login anovagroups
 vsce publish
 
 # Option 2: Publish specific VSIX
-vsce publish --packagePath sas-dataset-viewer-2.0.1.vsix
+vsce publish --packagePath sas-data-explorer-x.x.x.vsix
 ```
 
 ### 5. Alternative: Web Upload
 1. Go to https://marketplace.visualstudio.com/manage/publishers/anovagroups
 2. Click "New extension" or update existing
-3. Upload sas-dataset-viewer-2.0.1.vsix
+3. Upload sas-data-explorer-x.x.x.vsix
 4. Review and publish
 
 ## Post-Publishing
 
 ### Verification
-- [ ] Extension appears at: https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-dataset-viewer
+- [ ] Extension appears at: https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-data-explorer
 - [ ] Installation works from VS Code marketplace
 - [ ] All features functional after marketplace install
 
@@ -103,11 +103,11 @@ vsce publish --packagePath sas-dataset-viewer-2.0.1.vsix
 
 ## Extension Details
 
-- **Name**: SAS Dataset Viewer
-- **ID**: sas-dataset-viewer
+- **Name**: SAS Data Explorer
+- **ID**: sas-data-explorer
 - **Publisher**: anovagroups
-- **Version**: 2.0.1
-- **Size**: 1.46 MB
+- **Version**: 2.2.0
+- **Size**: ~1.5 MB
 - **Min VS Code**: 1.74.0
 
 ## Key Features in v2.0.1
@@ -120,7 +120,7 @@ vsce publish --packagePath sas-dataset-viewer-2.0.1.vsix
 - Professional logging system
 
 ## Support Information
-- GitHub Issues: https://github.com/anovagroups/sas-dataset-viewer/issues
+- GitHub Issues: https://github.com/anovagroups/sas-data-explorer/issues
 - Documentation: README.md in repository
 - License: MIT
 

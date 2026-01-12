@@ -1,4 +1,4 @@
-# SAS Dataset Viewer for VS Code
+# SAS Data Explorer for VS Code
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
@@ -8,9 +8,9 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) 
 
 ## 📥 Installation
 
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-dataset-viewer)
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-data-explorer)
 
-Or search for "SAS Dataset Viewer" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
+Or search for "SAS Data Explorer" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
 
 ## ✨ Features
 
@@ -139,7 +139,7 @@ Or search for "SAS Dataset Viewer" in VS Code Extensions panel (Ctrl+Shift+X / C
 
 This extension contributes the following settings:
 
-- `sasDatasetViewer.enableDebugLogging`: Enable debug logging output (default: false)
+- `sasDataExplorer.enableDebugLogging`: Enable debug logging output (default: false)
 
 ## 📊 Commands
 
@@ -147,7 +147,7 @@ This extension contributes the following commands:
 
 - `SAS: Open SAS Dataset`: Open a SAS7BDAT dataset file
 - `SAS: Open SAS XPT File`: Open a SAS XPT (XPORT) transport file
-- `SAS Dataset Viewer: Show Output`: Display the output channel for debugging
+- `SAS Data Explorer: Show Output`: Display the output channel for debugging
 
 ## 🐛 Known Issues
 
@@ -207,7 +207,7 @@ This extension contributes the following commands:
 - **New Feature**: Unique values extraction for categorical variables
 - **New Feature**: Multi-column unique combinations (NODUPKEY equivalent)
 - **Improved Architecture**: TypeScript reader with automatic Python fallback
-- **Better Logging**: Show output command for debugging (`SAS Dataset Viewer: Show Output`)
+- **Better Logging**: Show output command for debugging (`SAS Data Explorer: Show Output`)
 
 ### 1.0.0
 

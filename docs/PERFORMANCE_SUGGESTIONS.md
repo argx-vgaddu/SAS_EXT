@@ -1,4 +1,4 @@
-# Performance Improvement Suggestions for SAS Dataset Viewer
+# Performance Improvement Suggestions for SAS Data Explorer
 
 Based on an analysis of the extension's code, here are some suggestions to improve the performance of the filtering functionality.
 

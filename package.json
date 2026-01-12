@@ -1,6 +1,6 @@
 {
-  "name": "sas-dataset-viewer",
-  "displayName": "SAS Dataset Viewer",
+  "name": "sas-data-explorer",
+  "displayName": "SAS Data Explorer",
   "description": "View, filter, and analyze SAS7BDAT and XPT (XPORT) dataset files directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
   "version": "2.2.0",
   "publisher": "anovagroups",
@@ -36,15 +36,15 @@
     "statistics"
   ],
   "activationEvents": [
-    "onCustomEditor:sasDatasetViewer.sas7bdat",
-    "onCustomEditor:sasDatasetViewer.xpt"
+    "onCustomEditor:sasDataExplorer.sas7bdat",
+    "onCustomEditor:sasDataExplorer.xpt"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
       {
-        "viewType": "sasDatasetViewer.sas7bdat",
-        "displayName": "SAS Dataset Viewer",
+        "viewType": "sasDataExplorer.sas7bdat",
+        "displayName": "SAS Data Explorer",
         "selector": [
           {
             "filenamePattern": "*.sas7bdat"
@@ -52,8 +52,8 @@
         ]
       },
       {
-        "viewType": "sasDatasetViewer.xpt",
-        "displayName": "SAS XPT Viewer",
+        "viewType": "sasDataExplorer.xpt",
+        "displayName": "SAS XPT Explorer",
         "selector": [
           {
             "filenamePattern": "*.xpt"
@@ -63,28 +63,28 @@
     ],
     "commands": [
       {
-        "command": "sasDatasetViewer.openDataset",
+        "command": "sasDataExplorer.openDataset",
         "title": "Open SAS Dataset",
         "category": "SAS"
       },
       {
-        "command": "sasDatasetViewer.openXPT",
+        "command": "sasDataExplorer.openXPT",
         "title": "Open SAS XPT File",
         "category": "SAS"
       },
       {
-        "command": "sasDatasetViewer.showOutput",
+        "command": "sasDataExplorer.showOutput",
         "title": "Show Output",
-        "category": "SAS Dataset Viewer"
+        "category": "SAS Data Explorer"
       }
     ],
     "configuration": {
-      "title": "SAS Dataset Viewer",
+      "title": "SAS Data Explorer",
       "properties": {
-        "sasDatasetViewer.enableDebugLogging": {
+        "sasDataExplorer.enableDebugLogging": {
           "type": "boolean",
           "default": false,
-          "description": "Enable debug logging for the SAS Dataset Viewer extension"
+          "description": "Enable debug logging for the SAS Data Explorer extension"
         }
       }
     }

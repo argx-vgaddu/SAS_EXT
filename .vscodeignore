@@ -1,5 +1,6 @@
 .vscode/**
 .vscode-test/**
+.env
 src/**
 **/*.map
 .gitignore
@@ -11,11 +12,17 @@ test_python.py
 test_scientific_notation.py
 debug_usubjid.py
 create_sample_data.py
+create_test_xpt.py
 image/feedback*.png
 *.vsix
 .github/**
 .git/**
 docs/**
+# Exclude development folders
+.venv/**
+.claude/**
+testing/**
+data/**
 # Exclude dev dependencies but keep production ones
 node_modules/@types/**
 node_modules/typescript/**

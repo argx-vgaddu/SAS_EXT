@@ -34,4 +34,4 @@ Thumbs.db
 test_data/*.sas7bdat
 
 # Claude context
-.claude/
+.claude/.env

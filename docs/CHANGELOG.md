@@ -1,6 +1,6 @@
 # Change Log
 
-All notable changes to the "SAS Dataset Viewer" extension will be documented in this file.
+All notable changes to the "SAS Data Explorer" extension will be documented in this file.
 
 ## [2.0.1] - 2025-01-28
 
@@ -57,7 +57,7 @@ All notable changes to the "SAS Dataset Viewer" extension will be documented in 
   - Improved error messages for invalid filters
 
 - **Better Logging**
-  - New command: `SAS Dataset Viewer: Show Output`
+  - New command: `SAS Data Explorer: Show Output`
   - Comprehensive debug logging when enabled
   - Performance metrics tracking
   - Better error diagnostics
@@ -140,4 +140,4 @@ All notable changes to the "SAS Dataset Viewer" extension will be documented in 
 
 ---
 
-For more information, visit the [GitHub repository](https://github.com/YOUR-USERNAME/sas-dataset-viewer)
+For more information, visit the [GitHub repository](https://github.com/anovagroups/sas-data-explorer)

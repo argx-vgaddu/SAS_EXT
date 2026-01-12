@@ -1,4 +1,4 @@
-# SAS Dataset Viewer v2.0.0 - Upgrade Summary
+# SAS Data Explorer v2.0.0 - Upgrade Summary
 
 ## 🚀 Major Architecture Change: TypeScript-First with Python Fallback
 

@@ -5,12 +5,12 @@ import { SASWebviewPanel } from './WebviewPanel';
 import { Logger } from './utils/logger';
 
 /**
- * Activates the SAS Dataset Viewer extension
+ * Activates the SAS Data Explorer extension
  * @param context - The VS Code extension context
  */
 export function activate(context: vscode.ExtensionContext) {
     // Initialize logging
-    Logger.initialize('SAS Dataset Viewer');
+    Logger.initialize('SAS Data Explorer');
     Logger.info('Extension activating...');
 
     const sasProvider = new SASDatasetProvider(context);
@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register custom editor providers
     const sasDisposable = vscode.window.registerCustomEditorProvider(
-        'sasDatasetViewer.sas7bdat',
+        'sasDataExplorer.sas7bdat',
         sasProvider,
         {
             webviewOptions: {
@@ -29,7 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
     );
 
     const xptDisposable = vscode.window.registerCustomEditorProvider(
-        'sasDatasetViewer.xpt',
+        'sasDataExplorer.xpt',
         xptProvider,
         {
             webviewOptions: {
@@ -41,7 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register command to show output channel
     const showOutputCommand = vscode.commands.registerCommand(
-        'sasDatasetViewer.showOutput',
+        'sasDataExplorer.showOutput',
         () => {
             Logger.show();
             Logger.info('Output channel displayed');
@@ -50,7 +50,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Register command to open SAS dataset
     const openCommand = vscode.commands.registerCommand(
-        'sasDatasetViewer.openDataset',
+        'sasDataExplorer.openDataset',
         async () => {
             const options: vscode.OpenDialogOptions = {
                 canSelectMany: false,
@@ -62,14 +62,14 @@ export function activate(context: vscode.ExtensionContext) {
 
             const fileUri = await vscode.window.showOpenDialog(options);
             if (fileUri && fileUri[0]) {
-                await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDatasetViewer.sas7bdat');
+                await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDataExplorer.sas7bdat');
             }
         }
     );
 
     // Register command to open XPT file
     const openXPTCommand = vscode.commands.registerCommand(
-        'sasDatasetViewer.openXPT',
+        'sasDataExplorer.openXPT',
         async () => {
             const options: vscode.OpenDialogOptions = {
                 canSelectMany: false,
@@ -81,7 +81,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             const fileUri = await vscode.window.showOpenDialog(options);
             if (fileUri && fileUri[0]) {
-                await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDatasetViewer.xpt');
+                await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDataExplorer.xpt');
             }
         }
     );
@@ -95,7 +95,7 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.info('Extension activated successfully');
     Logger.info('TypeScript reader v2.0.0 with improved WHERE clause filtering');
     Logger.info('XPT file support enabled');
-    // Logger is available via command: "SAS Dataset Viewer: Show Output"
+    // Logger is available via command: "SAS Data Explorer: Show Output"
 }
 
 /**

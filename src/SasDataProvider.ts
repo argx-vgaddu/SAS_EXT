@@ -11,7 +11,7 @@ import { EnhancedSASReader, DatasetMetadata, DataRow } from './readers/EnhancedS
  * Handles the lifecycle of SAS dataset documents and their associated webview editors
  */
 export class SASDatasetProvider implements vscode.CustomReadonlyEditorProvider<SASDatasetDocument> {
-    private static readonly viewType = 'sasDatasetViewer.sas7bdat';
+    private static readonly viewType = 'sasDataExplorer.sas7bdat';
     private readonly logger = Logger.createScoped('SASDatasetProvider');
 
     constructor(

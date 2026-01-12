@@ -11,7 +11,7 @@ export enum LogLevel {
 }
 
 /**
- * Centralized logging utility for the SAS Dataset Viewer extension
+ * Centralized logging utility for the SAS Data Explorer extension
  * Provides proper VS Code output channel logging with configurable levels
  */
 export class Logger {
@@ -29,7 +29,7 @@ export class Logger {
             Logger.instance = new Logger();
 
             // Check if debug logging is enabled via configuration
-            const config = vscode.workspace.getConfiguration('sasDatasetViewer');
+            const config = vscode.workspace.getConfiguration('sasDataExplorer');
             const enableDebugLogging = config.get<boolean>('enableDebugLogging', false);
             Logger.logLevel = enableDebugLogging ? LogLevel.DEBUG : LogLevel.INFO;
         }
@@ -80,7 +80,7 @@ export class Logger {
 
         // Also show error notification for critical errors
         if (data instanceof Error) {
-            vscode.window.showErrorMessage(`SAS Dataset Viewer: ${message}`);
+            vscode.window.showErrorMessage(`SAS Data Explorer: ${message}`);
         }
     }
 

@@ -1,4 +1,4 @@
-# Publishing SAS Dataset Viewer to VS Code Marketplace
+# Publishing SAS Data Explorer to VS Code Marketplace
 
 ## Prerequisites
 
@@ -43,7 +43,7 @@ npm test
 # Create a .vsix file
 vsce package
 
-# This will create: sas-dataset-viewer-0.1.3.vsix
+# This will create: sas-data-explorer-x.x.x.vsix
 ```
 
 ### 4. Test Locally (Optional)
@@ -80,8 +80,8 @@ vsce publish patch  # Increments to 0.1.4
 
 ## Important Notes
 
-- The extension ID is: `sas-dataset-viewer`
-- Current version: `0.1.3`
+- The extension ID is: `sas-data-explorer`
+- Current version: `2.2.0`
 - Publisher needs to be set in `package.json`
 - Ensure all dependencies are listed in `package.json`
 - The Python backend files in `/python` directory are included in the package
@@ -110,7 +110,7 @@ npx @vscode/vsce publish
 ## After Publishing
 
 1. Check the extension page at:
-   `https://marketplace.visualstudio.com/items?itemName=<publisher>.sas-dataset-viewer`
+   `https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-data-explorer`
 
 2. Monitor for user feedback and issues
 
