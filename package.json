@@ -2,8 +2,8 @@
   "name": "dataset-lens",
   "displayName": "Dataset Lens",
   "description": "View, filter, and analyze SAS7BDAT, XPT (XPORT), CDISC Dataset-JSON, and R data files (.rds, .rdata) directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
-  "version": "2.2.0",
-  "publisher": "anovagroups",
+  "version": "2.2.1",
+  "publisher": "elearnsas",
   "icon": "icon.png",
   "galleryBanner": {
     "color": "#1e3a5f",
