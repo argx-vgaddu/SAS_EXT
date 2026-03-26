@@ -8,7 +8,7 @@ A powerful VS Code extension for viewing and analyzing SAS7BDAT, XPT (XPORT), CD
 
 ## 📥 Installation
 
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=anovagroups.dataset-lens)
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=elearnsas.dataset-lens)
 
 Or search for "Dataset Lens" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
 
