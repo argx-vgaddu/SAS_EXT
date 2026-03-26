@@ -1,22 +1,22 @@
-# SAS Data Explorer for VS Code
+# Dataset Lens for VS Code
 
 ![Version](https://img.shields.io/badge/version-2.2.0-blue)
 ![VS Code](https://img.shields.io/badge/VS%20Code-^1.74.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A powerful VS Code extension for viewing and analyzing SAS7BDAT and XPT (XPORT) dataset files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
+A powerful VS Code extension for viewing and analyzing SAS7BDAT, XPT (XPORT), CDISC Dataset-JSON, and R data files directly in your editor. Features TypeScript-first architecture with 600x performance improvement and enhanced filtering capabilities. No SAS installation required!
 
 ## 📥 Installation
 
-Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=anovagroups.sas-data-explorer)
+Install from the [VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=anovagroups.dataset-lens)
 
-Or search for "SAS Data Explorer" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
+Or search for "Dataset Lens" in VS Code Extensions panel (Ctrl+Shift+X / Cmd+Shift+X)
 
 ## ✨ Features
 
 ### 📊 **Dataset Viewing**
 
-- Open and view SAS7BDAT and XPT (XPORT) files directly in VS Code
+- Open and view SAS7BDAT, XPT (XPORT), and CDISC Dataset-JSON files directly in VS Code
 - Professional tabular display with pagination
 - Support for large datasets (tested with 12,000+ rows)
 - Real-time data loading with visual feedback
@@ -25,6 +25,11 @@ Or search for "SAS Data Explorer" in VS Code Extensions panel (Ctrl+Shift+X / Cm
   - v8/v9 files (modern SAS): Automatic Python fallback with pyreadstat
   - Smart header-based version detection for instant format recognition
   - Automatic label row skipping for clean data display
+- **CDISC Dataset-JSON support**:
+  - Full support for CDISC Dataset-JSON v1.0 and v1.1 formats
+  - Native TypeScript parsing with instant load times
+  - Supports both clinicalData and referenceData structures
+  - WHERE clause filtering, unique values, and all standard features
 
 ### 🔍 **Advanced Filtering**
 
@@ -102,11 +107,12 @@ Or search for "SAS Data Explorer" in VS Code Extensions panel (Ctrl+Shift+X / Cm
 
 ### Opening SAS Datasets
 
-1. **File Explorer**: Simply click on any `.sas7bdat` or `.xpt` file
+1. **File Explorer**: Simply click on any `.sas7bdat`, `.xpt`, or CDISC `.json` file
 2. **Command Palette**:
-   - Use `SAS: Open SAS Dataset` command for .sas7bdat files
-   - Use `SAS: Open SAS XPT File` command for .xpt files
-3. **File Menu**: File → Open → Select .sas7bdat or .xpt file
+   - Use `Dataset Lens: Open SAS Dataset` command for .sas7bdat files
+   - Use `Dataset Lens: Open SAS XPT File` command for .xpt files
+   - Use `Dataset Lens: Open CDISC Dataset-JSON File` command for .json files
+3. **File Menu**: File → Open → Select .sas7bdat, .xpt, or .json file
 
 ### Filtering Data
 
@@ -145,9 +151,10 @@ This extension contributes the following settings:
 
 This extension contributes the following commands:
 
-- `SAS: Open SAS Dataset`: Open a SAS7BDAT dataset file
-- `SAS: Open SAS XPT File`: Open a SAS XPT (XPORT) transport file
-- `SAS Data Explorer: Show Output`: Display the output channel for debugging
+- `Dataset Lens: Open SAS Dataset`: Open a SAS7BDAT dataset file
+- `Dataset Lens: Open SAS XPT File`: Open a SAS XPT (XPORT) transport file
+- `Dataset Lens: Open CDISC Dataset-JSON File`: Open a CDISC Dataset-JSON file
+- `Dataset Lens: Show Output`: Display the output channel for debugging
 
 ## 🐛 Known Issues
 
@@ -207,7 +214,7 @@ This extension contributes the following commands:
 - **New Feature**: Unique values extraction for categorical variables
 - **New Feature**: Multi-column unique combinations (NODUPKEY equivalent)
 - **Improved Architecture**: TypeScript reader with automatic Python fallback
-- **Better Logging**: Show output command for debugging (`SAS Data Explorer: Show Output`)
+- **Better Logging**: Show output command for debugging (`Dataset Lens: Show Output`)
 
 ### 1.0.0
 
@@ -235,4 +242,4 @@ MIT License - see LICENSE file for details
 
 ---
 
-**Enjoy viewing your SAS datasets in VS Code!** 🎉
+**Enjoy viewing your datasets in VS Code!** 🎉

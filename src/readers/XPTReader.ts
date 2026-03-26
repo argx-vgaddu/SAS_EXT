@@ -223,6 +223,77 @@ export class XPTReader {
     }
 
     /**
+     * Detect if a row is a header/label row rather than actual data.
+     * Checks for:
+     * 1. Values containing parentheses (common in label rows)
+     * 2. Values that match the column names themselves (header rows)
+     * 3. Values that match the column labels (label rows without parentheses)
+     * 4. Numeric columns containing NaN (common in header/label rows)
+     */
+    private isHeaderOrLabelRow(record: DataRow): boolean {
+        const keys = Object.keys(record);
+        const values = Object.values(record);
+
+        console.log('[XPTReader] Checking first row for header/label detection:', JSON.stringify(record, null, 2));
+
+        // Check for parentheses in string values (label rows)
+        const hasLabelText = values.some(v =>
+            typeof v === 'string' &&
+            v.includes('(') &&
+            v.includes(')')
+        );
+        if (hasLabelText) {
+            console.log('[XPTReader] Detected label row: contains parentheses');
+            return true;
+        }
+
+        // Check if string values match their own column names (header rows)
+        const stringKeys = keys.filter(key => typeof record[key] === 'string');
+        if (stringKeys.length > 0) {
+            const nameMatches = stringKeys.filter(key => {
+                const val = record[key];
+                return typeof val === 'string' && val.trim().toUpperCase() === key.toUpperCase();
+            });
+
+            // If at least 2 string columns match their name, or all of them match, it's a header row
+            if (nameMatches.length >= 2 || (nameMatches.length > 0 && nameMatches.length === stringKeys.length)) {
+                console.log('[XPTReader] Detected header row: ' + nameMatches.length + ' of ' + stringKeys.length + ' string values match column names:', nameMatches);
+                return true;
+            }
+
+            // Check if string values match the column labels from metadata
+            if (this.metadata) {
+                const labelMatches = stringKeys.filter(key => {
+                    const val = (record[key] as string).trim().toUpperCase();
+                    const varMeta = this.metadata!.variables.find(v => v.name.toUpperCase() === key.toUpperCase());
+                    return varMeta && varMeta.label && val === varMeta.label.toUpperCase();
+                });
+                if (labelMatches.length >= 2 || (labelMatches.length > 0 && labelMatches.length === stringKeys.length)) {
+                    console.log('[XPTReader] Detected label row: ' + labelMatches.length + ' of ' + stringKeys.length + ' string values match column labels:', labelMatches);
+                    return true;
+                }
+            }
+        }
+
+        // Check if numeric columns are mostly NaN (common when a label/name row is misread as data)
+        const numericKeys = keys.filter(key => typeof record[key] === 'number');
+        if (numericKeys.length > 0 && stringKeys.length > 0) {
+            const nanCount = numericKeys.filter(key => isNaN(record[key] as number)).length;
+            const nameMatches = stringKeys.filter(key => {
+                const val = record[key];
+                return typeof val === 'string' && val.trim().toUpperCase() === key.toUpperCase();
+            });
+            // If we have at least 1 name match AND most numeric columns are NaN
+            if (nameMatches.length >= 1 && nanCount >= Math.ceil(numericKeys.length / 2)) {
+                console.log('[XPTReader] Detected header row: ' + nameMatches.length + ' name matches + ' + nanCount + ' of ' + numericKeys.length + ' numeric columns are NaN');
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Count rows without storing data (faster than readAllRecords)
      */
     private async countRows(): Promise<number> {
@@ -233,19 +304,10 @@ export class XPTReader {
 
             // Just iterate to count, don't store data
             for await (const record of lib.read({ rowFormat: 'object' })) {
-                // Skip first row if it contains label text
-                if (rowIndex === 0) {
-                    const values = Object.values(record);
-                    const hasLabelText = values.some(v =>
-                        typeof v === 'string' &&
-                        v.includes('(') &&
-                        v.includes(')')
-                    );
-
-                    if (hasLabelText) {
-                        rowIndex++;
-                        continue;
-                    }
+                // Skip first row if it contains label/header text
+                if (rowIndex === 0 && this.isHeaderOrLabelRow(record)) {
+                    rowIndex++;
+                    continue;
                 }
 
                 count++;
@@ -276,22 +338,11 @@ export class XPTReader {
             let rowIndex = 0;
             // Use async iterator to read records as objects
             for await (const record of lib.read({ rowFormat: 'object' })) {
-                // Skip first row if it contains label text instead of actual data
-                // Some XPT files have a header row with labels in the data
-                if (rowIndex === 0) {
-                    // Check if this looks like a label row (has parentheses which labels often have)
-                    const values = Object.values(record);
-                    const hasLabelText = values.some(v =>
-                        typeof v === 'string' &&
-                        v.includes('(') &&
-                        v.includes(')')
-                    );
-
-                    if (hasLabelText) {
-                        console.log('[XPTReader] Skipping first row containing label text');
-                        rowIndex++;
-                        continue;
-                    }
+                // Skip first row if it contains label/header text instead of actual data
+                if (rowIndex === 0 && this.isHeaderOrLabelRow(record)) {
+                    console.log('[XPTReader] Skipping first row containing label/header text');
+                    rowIndex++;
+                    continue;
                 }
 
                 records.push(record);

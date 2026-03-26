@@ -11,7 +11,7 @@ export enum LogLevel {
 }
 
 /**
- * Centralized logging utility for the SAS Data Explorer extension
+ * Centralized logging utility for the Dataset Lens extension
  * Provides proper VS Code output channel logging with configurable levels
  */
 export class Logger {
@@ -80,7 +80,7 @@ export class Logger {
 
         // Also show error notification for critical errors
         if (data instanceof Error) {
-            vscode.window.showErrorMessage(`SAS Data Explorer: ${message}`);
+            vscode.window.showErrorMessage(`Dataset Lens: ${message}`);
         }
     }
 

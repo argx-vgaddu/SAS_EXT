@@ -36,7 +36,7 @@ export function getPaginationHTML(metadata: any): string {
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline' 'unsafe-eval';">
-        <title>${fileName} - SAS Dataset Viewer</title>
+        <title>${fileName} - Dataset Lens</title>
         <style>
             body {
                 font-family: var(--vscode-font-family);
@@ -372,6 +372,42 @@ export function getPaginationHTML(metadata: any): string {
                 margin: 20px;
             }
 
+            .toast {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                padding: 10px 18px;
+                border-radius: 6px;
+                font-size: 13px;
+                z-index: 2000;
+                max-width: 420px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                opacity: 0;
+                transform: translateY(10px);
+                transition: opacity 0.25s, transform 0.25s;
+                pointer-events: none;
+            }
+            .toast.show {
+                opacity: 1;
+                transform: translateY(0);
+                pointer-events: auto;
+            }
+            .toast-error {
+                color: var(--vscode-errorForeground, #f44);
+                background: var(--vscode-notifications-background, #1e1e1e);
+                border: 1px solid var(--vscode-errorForeground, #f44);
+            }
+            .toast-warning {
+                color: var(--vscode-editorWarning-foreground, #cca700);
+                background: var(--vscode-notifications-background, #1e1e1e);
+                border: 1px solid var(--vscode-editorWarning-foreground, #cca700);
+            }
+            .toast-info {
+                color: var(--vscode-editorInfo-foreground, #3794ff);
+                background: var(--vscode-notifications-background, #1e1e1e);
+                border: 1px solid var(--vscode-editorInfo-foreground, #3794ff);
+            }
+
             /* Metadata Modal Styles */
             .modal {
                 display: none;
@@ -560,6 +596,7 @@ export function getPaginationHTML(metadata: any): string {
                 <div class="table-container">
                     <div id="loading-message" class="loading">Loading data...</div>
                     <div id="error-message" class="error" style="display: none;"></div>
+                    <div id="toast" class="toast" aria-live="polite"></div>
                     <table id="data-table" style="display: none;">
                         <thead id="table-header">
                             <tr></tr>
@@ -1118,6 +1155,21 @@ export function getPaginationHTML(metadata: any): string {
                 isLoading = false;
             }
 
+            let toastTimer = null;
+            function showToast(message, type) {
+                type = type || 'error';
+                const toast = document.getElementById('toast');
+                if (!toast) return;
+                toast.className = 'toast toast-' + type;
+                toast.textContent = message;
+                // Trigger show
+                requestAnimationFrame(() => { toast.classList.add('show'); });
+                if (toastTimer) clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 5000);
+            }
+
             function showData() {
                 loadingMessage.style.display = 'none';
                 errorMessage.style.display = 'none';
@@ -1298,7 +1350,7 @@ export function getPaginationHTML(metadata: any): string {
 
                     case 'error':
                         console.error('Error:', message.message);
-                        showError(message.message);
+                        showToast(message.message, 'error');
                         break;
 
                     case 'uniqueValuesResult':
@@ -1414,10 +1466,7 @@ export function getPaginationHTML(metadata: any): string {
                 // Validate that all variables exist
                 const invalidVars = variables.filter(v => !allVariables.some(av => av.name.toUpperCase() === v));
                 if (invalidVars.length > 0) {
-                    vscode.postMessage({
-                        command: 'error',
-                        data: { message: 'Invalid variables: ' + invalidVars.join(', ') }
-                    });
+                    showToast('Variable(s) not found: ' + invalidVars.join(', ') + '. Check spelling and try again.', 'warning');
                     return;
                 }
 
@@ -1588,7 +1637,7 @@ export function getPaginationHTML(metadata: any): string {
                 init();
             }
 
-            console.log('Pagination SAS Dataset Viewer initialized');
+            console.log('Pagination Dataset Lens initialized');
         </script>
     </body>
     </html>`;

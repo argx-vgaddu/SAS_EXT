@@ -1,20 +1,24 @@
 import * as vscode from 'vscode';
 import { SASDatasetProvider } from './SasDataProvider';
 import { XPTDatasetProvider } from './XptDataProvider';
+import { RDatasetProvider } from './RDataProvider';
+import { DatasetJsonProvider } from './DatasetJsonProvider';
 import { SASWebviewPanel } from './WebviewPanel';
 import { Logger } from './utils/logger';
 
 /**
- * Activates the SAS Data Explorer extension
+ * Activates the Dataset Lens extension
  * @param context - The VS Code extension context
  */
 export function activate(context: vscode.ExtensionContext) {
     // Initialize logging
-    Logger.initialize('SAS Data Explorer');
+    Logger.initialize('Dataset Lens');
     Logger.info('Extension activating...');
 
     const sasProvider = new SASDatasetProvider(context);
     const xptProvider = new XPTDatasetProvider(context);
+    const rDataProvider = new RDatasetProvider(context);
+    const datasetJsonProvider = new DatasetJsonProvider(context);
 
     // Register custom editor providers
     const sasDisposable = vscode.window.registerCustomEditorProvider(
@@ -31,6 +35,42 @@ export function activate(context: vscode.ExtensionContext) {
     const xptDisposable = vscode.window.registerCustomEditorProvider(
         'sasDataExplorer.xpt',
         xptProvider,
+        {
+            webviewOptions: {
+                retainContextWhenHidden: true,
+            },
+            supportsMultipleEditorsPerDocument: false,
+        }
+    );
+
+    // Register R data provider for .rds files
+    const rdsDisposable = vscode.window.registerCustomEditorProvider(
+        'sasDataExplorer.rds',
+        rDataProvider,
+        {
+            webviewOptions: {
+                retainContextWhenHidden: true,
+            },
+            supportsMultipleEditorsPerDocument: false,
+        }
+    );
+
+    // Register R data provider for .rdata/.rda files
+    const rdataDisposable = vscode.window.registerCustomEditorProvider(
+        'sasDataExplorer.rdata',
+        rDataProvider,
+        {
+            webviewOptions: {
+                retainContextWhenHidden: true,
+            },
+            supportsMultipleEditorsPerDocument: false,
+        }
+    );
+
+    // Register CDISC Dataset-JSON provider
+    const datasetJsonDisposable = vscode.window.registerCustomEditorProvider(
+        'sasDataExplorer.datasetjson',
+        datasetJsonProvider,
         {
             webviewOptions: {
                 retainContextWhenHidden: true,
@@ -86,8 +126,62 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
+    // Register command to open R data file
+    const openRDataCommand = vscode.commands.registerCommand(
+        'sasDataExplorer.openRData',
+        async () => {
+            const options: vscode.OpenDialogOptions = {
+                canSelectMany: false,
+                openLabel: 'Open R Data File',
+                filters: {
+                    'R Data Files': ['rds', 'rdata', 'rda']
+                }
+            };
+
+            const fileUri = await vscode.window.showOpenDialog(options);
+            if (fileUri && fileUri[0]) {
+                const ext = fileUri[0].fsPath.toLowerCase();
+                if (ext.endsWith('.rds')) {
+                    await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDataExplorer.rds');
+                } else {
+                    await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDataExplorer.rdata');
+                }
+            }
+        }
+    );
+
+    // Register command to open CDISC Dataset-JSON file
+    const openDatasetJsonCommand = vscode.commands.registerCommand(
+        'sasDataExplorer.openDatasetJson',
+        async () => {
+            const options: vscode.OpenDialogOptions = {
+                canSelectMany: false,
+                openLabel: 'Open CDISC Dataset-JSON File',
+                filters: {
+                    'CDISC Dataset-JSON Files': ['json']
+                }
+            };
+
+            const fileUri = await vscode.window.showOpenDialog(options);
+            if (fileUri && fileUri[0]) {
+                await vscode.commands.executeCommand('vscode.openWith', fileUri[0], 'sasDataExplorer.datasetjson');
+            }
+        }
+    );
+
     // Add disposables to context for proper cleanup
-    context.subscriptions.push(sasDisposable, xptDisposable, openCommand, openXPTCommand, showOutputCommand);
+    context.subscriptions.push(
+        sasDisposable,
+        xptDisposable,
+        rdsDisposable,
+        rdataDisposable,
+        datasetJsonDisposable,
+        openCommand,
+        openXPTCommand,
+        openRDataCommand,
+        openDatasetJsonCommand,
+        showOutputCommand
+    );
 
     // Ensure logger is disposed when extension deactivates
     context.subscriptions.push({ dispose: () => Logger.dispose() });
@@ -95,7 +189,9 @@ export function activate(context: vscode.ExtensionContext) {
     Logger.info('Extension activated successfully');
     Logger.info('TypeScript reader v2.0.0 with improved WHERE clause filtering');
     Logger.info('XPT file support enabled');
-    // Logger is available via command: "SAS Data Explorer: Show Output"
+    Logger.info('R data file support enabled (.rds, .rdata, .rda)');
+    Logger.info('CDISC Dataset-JSON support enabled');
+    // Logger is available via command: "Dataset Lens: Show Output"
 }
 
 /**

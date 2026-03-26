@@ -1,7 +1,7 @@
 {
-  "name": "sas-data-explorer",
-  "displayName": "SAS Data Explorer",
-  "description": "View, filter, and analyze SAS7BDAT and XPT (XPORT) dataset files directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
+  "name": "dataset-lens",
+  "displayName": "Dataset Lens",
+  "description": "View, filter, and analyze SAS7BDAT, XPT (XPORT), CDISC Dataset-JSON, and R data files (.rds, .rdata) directly in VS Code with powerful features like WHERE clause filtering, variable selection, and pagination",
   "version": "2.2.0",
   "publisher": "anovagroups",
   "icon": "icon.png",
@@ -31,20 +31,28 @@
     "sas7bdat",
     "xpt",
     "xport",
+    "rds",
+    "rdata",
+    "r",
+    "cdisc",
+    "dataset-json",
     "dataset",
     "data viewer",
     "statistics"
   ],
   "activationEvents": [
     "onCustomEditor:sasDataExplorer.sas7bdat",
-    "onCustomEditor:sasDataExplorer.xpt"
+    "onCustomEditor:sasDataExplorer.xpt",
+    "onCustomEditor:sasDataExplorer.rds",
+    "onCustomEditor:sasDataExplorer.rdata",
+    "onCustomEditor:sasDataExplorer.datasetjson"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "customEditors": [
       {
         "viewType": "sasDataExplorer.sas7bdat",
-        "displayName": "SAS Data Explorer",
+        "displayName": "Dataset Lens",
         "selector": [
           {
             "filenamePattern": "*.sas7bdat"
@@ -53,10 +61,40 @@
       },
       {
         "viewType": "sasDataExplorer.xpt",
-        "displayName": "SAS XPT Explorer",
+        "displayName": "Dataset Lens - XPT",
         "selector": [
           {
             "filenamePattern": "*.xpt"
+          }
+        ]
+      },
+      {
+        "viewType": "sasDataExplorer.rds",
+        "displayName": "Dataset Lens - RDS",
+        "selector": [
+          {
+            "filenamePattern": "*.rds"
+          }
+        ]
+      },
+      {
+        "viewType": "sasDataExplorer.rdata",
+        "displayName": "Dataset Lens - RData",
+        "selector": [
+          {
+            "filenamePattern": "*.rdata"
+          },
+          {
+            "filenamePattern": "*.rda"
+          }
+        ]
+      },
+      {
+        "viewType": "sasDataExplorer.datasetjson",
+        "displayName": "Dataset Lens - Dataset-JSON",
+        "selector": [
+          {
+            "filenamePattern": "*.json"
           }
         ]
       }
@@ -65,26 +103,36 @@
       {
         "command": "sasDataExplorer.openDataset",
         "title": "Open SAS Dataset",
-        "category": "SAS"
+        "category": "Dataset Lens"
       },
       {
         "command": "sasDataExplorer.openXPT",
         "title": "Open SAS XPT File",
-        "category": "SAS"
+        "category": "Dataset Lens"
+      },
+      {
+        "command": "sasDataExplorer.openRData",
+        "title": "Open R Data File",
+        "category": "Dataset Lens"
+      },
+      {
+        "command": "sasDataExplorer.openDatasetJson",
+        "title": "Open CDISC Dataset-JSON File",
+        "category": "Dataset Lens"
       },
       {
         "command": "sasDataExplorer.showOutput",
         "title": "Show Output",
-        "category": "SAS Data Explorer"
+        "category": "Dataset Lens"
       }
     ],
     "configuration": {
-      "title": "SAS Data Explorer",
+      "title": "Dataset Lens",
       "properties": {
         "sasDataExplorer.enableDebugLogging": {
           "type": "boolean",
           "default": false,
-          "description": "Enable debug logging for the SAS Data Explorer extension"
+          "description": "Enable debug logging for the Dataset Lens extension"
         }
       }
     }

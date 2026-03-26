@@ -274,6 +274,22 @@ export class SASWebviewPanel {
                 this.logger.debug('Clearing filter - returning to full dataset');
                 filteredRowCount = this.document.metadata?.total_rows || 0;
             } else {
+                // Validate column names referenced in WHERE clause
+                if (this.document.metadata) {
+                    const knownVars = this.document.metadata.variables.map(v => v.name.toUpperCase());
+                    // Extract variable names from WHERE clause (word before operator)
+                    const referencedVars = whereClause.match(/\b(\w+)\s*(?:>=|<=|!=|<>|=|>|<|\bEQ\b|\bNE\b|\bGT\b|\bLT\b|\bGE\b|\bLE\b|\bIN\b)/gi) || [];
+                    const varNames = referencedVars.map((m: string) => m.replace(/\s*(?:>=|<=|!=|<>|=|>|<|EQ|NE|GT|LT|GE|LE|IN)\s*$/i, '').trim().toUpperCase());
+                    const invalidVars = varNames.filter((v: string) => v && !knownVars.includes(v));
+                    if (invalidVars.length > 0) {
+                        await this.panel.webview.postMessage({
+                            type: 'error',
+                            message: `WHERE clause references unknown variable(s): ${[...new Set(invalidVars)].join(', ')}. Check spelling and try again.`
+                        });
+                        return;
+                    }
+                }
+
                 // Use the optimized getFilteredRowCount method
                 // This is much faster as it doesn't load any actual data
                 filteredRowCount = await this.document.getFilteredRowCount(whereClause);
@@ -311,6 +327,19 @@ export class SASWebviewPanel {
         const { variables } = data;
 
         this.logger.debug('Getting unique values for variables:', variables);
+
+        // Validate that requested variables exist in metadata
+        if (this.document.metadata) {
+            const knownVars = this.document.metadata.variables.map(v => v.name.toUpperCase());
+            const invalidVars = variables.filter(v => !knownVars.includes(v.toUpperCase()));
+            if (invalidVars.length > 0) {
+                await this.panel.webview.postMessage({
+                    type: 'error',
+                    message: `Variable(s) not found: ${invalidVars.join(', ')}. Check spelling and try again.`
+                });
+                return;
+            }
+        }
 
         try {
             let result: any;
